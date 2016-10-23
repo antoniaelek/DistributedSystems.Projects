@@ -18,10 +18,11 @@ namespace IoTSensorDataProcessing.Sensor
         private TcpListener _listener;
         private TcpClient _client;
 
+        private bool _active = false;
+
         private const int Threads = 5;
         private const int MaxClients = 10;
         private int _activeConnections = 0;
-        private static int _instancesCounter = 0;
 
         public string Name { get; }
         public IPAddress Ip { get; }
@@ -66,12 +67,17 @@ namespace IoTSensorDataProcessing.Sensor
 
         private static ServerClient _webServerClient;
 
-        public Action<string> WriteLogAction { get; set; } = s => Console.WriteLine(s);
+        public Action<string> WriteLogAction { get; set; }
 
-        public Sensor(string filePath, double longMin = 15.87, 
-            double longMax = 16, double latMin = 45.75, double latMax = 45.85)
+        public Sensor(string filePath, double longMin = 15.87,
+            double longMax = 16, double latMin = 45.75, double latMax = 45.85,
+            Action<string> writeLogAction = null)
         {
             // Register sensor on the web service
+            WriteLogAction = writeLogAction;
+            if (writeLogAction == null)
+                WriteLogAction = s => Console.WriteLine(s);
+
             _rand = new Random();
             Name = SetName();
             Port = SetPort();
@@ -86,21 +92,26 @@ namespace IoTSensorDataProcessing.Sensor
 
             if (_webServerClient == null) _webServerClient = new ServerClient();
             _webServerClient.Register(Name, Latitude, Longitude, Ip.ToString(), Port);
-            WriteLogAction("Sensor registered.");
+            WriteLogAction("Sensor registered." );
 
             // Start tcp server
             StartTcpServer(Ip.ToString(), Port);
-            WriteLogAction("Started tcp server on port " + Port);
+            WriteLogAction("Started tcp server on port " + Port );
         }
 
         public void CommunicateWithNeighbour()
         {
             // Search for neighbour
             var neighbour = _webServerClient.SearchNeighbour(Name);
-
+            _active = true;
             // Connect to the neighbour as client
             if (neighbour != null)
                 StartTcpClient(neighbour.IpAddress, neighbour.Port);
+        }
+
+        public void StopCommmunicationWithNeighbour()
+        {
+            _active = false;
         }
 
         private void StartTcpClient(string hostname, int port)
@@ -112,19 +123,34 @@ namespace IoTSensorDataProcessing.Sensor
                     var sr = new StreamReader(stream);
                     var sw = new StreamWriter(stream) {AutoFlush = true};
                     WriteLogAction(sr.ReadLine());
-                    while (true)
+                    while (_active == true)
                     {
-                        var msg = "Send me measurements";
+                        var msg = "FETCH";
+                        WriteLogAction("client > req: " + msg);
                         sw.WriteLine(msg);
-                        WriteLogAction("Client sent: " + msg);
+                        
                         // Get measurement from neighbour
                         var response = sr.ReadLine();
+
                         // Calculate own measurement
-                        WriteLogAction("Client received: " + response);
+                        WriteLogAction("client > resp: " + response);
+
                         // Send measurement to the web server
+                        Thread.Sleep(5000);
+                        
                     }
+                    var msgStop = "STOP";
+                    WriteLogAction("client > req: " + msgStop);
+                    sw.WriteLine(msgStop);
+                    var responseStop = sr.ReadLine();
+                    WriteLogAction("server > resp: " + responseStop);
                 }
             }
+        }
+
+        public void StopTcpClient()
+        {
+            _active = false;
         }
 
         private void StartTcpServer(string ipAdr, int port)
@@ -141,14 +167,15 @@ namespace IoTSensorDataProcessing.Sensor
 
         }
 
+        // server
         public void Loop()
         {
             while (true)
             {
                 using (var socket = _listener.AcceptSocket())
                 {
-                    socket.SetSocketOption(SocketOptionLevel.Socket,
-                        SocketOptionName.ReceiveTimeout, 10000);
+                    //socket.SetSocketOption(SocketOptionLevel.Socket,
+                    //    SocketOptionName.ReceiveTimeout, 10000);
                     try
                     {
                         using (var s = new NetworkStream(socket))
@@ -160,10 +187,15 @@ namespace IoTSensorDataProcessing.Sensor
                             while (true)
                             {
                                 string request = sr.ReadLine();
-                                WriteLogAction("Server received: " + request);
-                                //if (string.IsNullOrEmpty(name)) break;
+                                WriteLogAction("server > rec: " + request);
+                                if (request.ToLower().Equals("stop"))
+                                {
+                                    sw.WriteLine("OK");
+                                    WriteLogAction("server > send: OK");
+                                    break;
+                                }
                                 var msg = ConstructMessage(GetMeasurement());
-                                WriteLogAction("Server sent: " + msg);
+                                WriteLogAction("server > send: " + msg);
                                 sw.WriteLine(msg);
                             }
                         }
@@ -203,33 +235,37 @@ namespace IoTSensorDataProcessing.Sensor
         private int SetPort()
         {
             int port = 2055;
-            WriteLogAction(Port.ToString());
             while (true)
             {
                 if (CheckPortAvaliable(port)) return port;
                 port++;
             }
-            //return port;
             // TO-DO max port number?
         }
 
         private bool CheckPortAvaliable(int port)
         {
-            bool isAvailable = true;
-
-            // Evaluate current system tcp connections. This is the same information provided
-            // by the netstat command line application, just in .Net strongly-typed object
-            // form.  We will look through the list, and if our port we would like to use
-            // in our TcpClient is occupied, we will set isAvailable to false.
+            var isAvailable = true;
             var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
-            var tcpConnInfoArray = ipGlobalProperties.GetActiveTcpConnections();
+            var tcpConnInfoArray = ipGlobalProperties.GetActiveTcpListeners();
 
             foreach (var tcpi in tcpConnInfoArray)
+            {
+                if (tcpi.Port == port)
+                {
+                    isAvailable = false;
+                    return isAvailable;
+                }
+            }
+
+            var tcpConnInfoArray2 = ipGlobalProperties.GetActiveTcpConnections();
+
+            foreach (var tcpi in tcpConnInfoArray2)
             {
                 if (tcpi.LocalEndPoint.Port == port)
                 {
                     isAvailable = false;
-                    break;
+                    return isAvailable;
                 }
             }
             return isAvailable;
@@ -295,20 +331,6 @@ namespace IoTSensorDataProcessing.Sensor
 
         private static IPAddress GetIpAddress(params string[] names)
         {
-            //string name = (names.Length < 1) ? Dns.GetHostName() : names[0];
-            //try
-            //{
-            //    var hostEntry = Dns.GetHostEntry(name);
-            //    IPAddress[] addrs = hostEntry.AddressList;
-            //    //foreach (IPAddress addr in addrs)
-            //    //    Console.WriteLine("{0}/{1}", name, addr);
-            //    return addrs[0];
-            //}
-            //catch (Exception e)
-            //{
-            //    Console.WriteLine(e.Message);
-            //    return null;
-            //}
             return IPAddress.Parse("127.0.0.1");
         }
     }

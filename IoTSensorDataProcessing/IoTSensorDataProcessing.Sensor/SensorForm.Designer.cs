@@ -34,6 +34,8 @@
             this.locationLabel = new System.Windows.Forms.Label();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.buttonSendMeasure = new System.Windows.Forms.Button();
+            this.buttonStopSending = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -85,9 +87,9 @@
             this.textBox1.Location = new System.Drawing.Point(12, 112);
             this.textBox1.Multiline = true;
             this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(350, 123);
+            this.textBox1.Size = new System.Drawing.Size(350, 122);
             this.textBox1.TabIndex = 4;
-            this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
+            //this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
             // 
             // groupBox1
             // 
@@ -104,11 +106,36 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Info";
             // 
+            // buttonSendMeasure
+            // 
+            this.buttonSendMeasure.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.buttonSendMeasure.Location = new System.Drawing.Point(13, 238);
+            this.buttonSendMeasure.Name = "buttonSendMeasure";
+            this.buttonSendMeasure.Size = new System.Drawing.Size(118, 23);
+            this.buttonSendMeasure.TabIndex = 6;
+            this.buttonSendMeasure.Text = "Send measurements";
+            this.buttonSendMeasure.UseVisualStyleBackColor = true;
+            this.buttonSendMeasure.Click += new System.EventHandler(this.buttonSendMeasure_Click);
+            // 
+            // buttonStopSending
+            // 
+            this.buttonStopSending.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.buttonStopSending.Enabled = false;
+            this.buttonStopSending.Location = new System.Drawing.Point(138, 238);
+            this.buttonStopSending.Name = "buttonStopSending";
+            this.buttonStopSending.Size = new System.Drawing.Size(118, 23);
+            this.buttonStopSending.TabIndex = 7;
+            this.buttonStopSending.Text = "Stop sending";
+            this.buttonStopSending.UseVisualStyleBackColor = true;
+            this.buttonStopSending.Click += new System.EventHandler(this.buttonStopSending_Click);
+            // 
             // SensorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(374, 247);
+            this.ClientSize = new System.Drawing.Size(374, 273);
+            this.Controls.Add(this.buttonStopSending);
+            this.Controls.Add(this.buttonSendMeasure);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.textBox1);
             this.Name = "SensorForm";
@@ -128,5 +155,7 @@
         private System.Windows.Forms.Label locationLabel;
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.Button buttonSendMeasure;
+        private System.Windows.Forms.Button buttonStopSending;
     }
 }
