@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -18,10 +17,11 @@ namespace IoTSensorDataProcessing.Sensor
         private TcpListener _listener;
         private TcpClient _client;
 
+        private bool _active = false;
+
         private const int Threads = 5;
         private const int MaxClients = 10;
         private int _activeConnections = 0;
-        private static int _instancesCounter = 0;
 
         public string Name { get; }
         public IPAddress Ip { get; }
@@ -66,12 +66,17 @@ namespace IoTSensorDataProcessing.Sensor
 
         private static ServerClient _webServerClient;
 
-        public Action<string> WriteLogAction { get; set; } = s => Console.WriteLine(s);
+        public Action<string> WriteLogAction { get; set; }
 
-        public Sensor(string filePath, double longMin = 15.87, 
-            double longMax = 16, double latMin = 45.75, double latMax = 45.85)
+        public Sensor(string filePath, double longMin = 15.87,
+            double longMax = 16, double latMin = 45.75, double latMax = 45.85,
+            Action<string> writeLogAction = null)
         {
             // Register sensor on the web service
+            WriteLogAction = writeLogAction;
+            if (writeLogAction == null)
+                WriteLogAction = Console.WriteLine;
+
             _rand = new Random();
             Name = SetName();
             Port = SetPort();
@@ -86,21 +91,26 @@ namespace IoTSensorDataProcessing.Sensor
 
             if (_webServerClient == null) _webServerClient = new ServerClient();
             _webServerClient.Register(Name, Latitude, Longitude, Ip.ToString(), Port);
-            WriteLogAction("Sensor registered.");
+            WriteLogAction("Sensor registered." );
 
             // Start tcp server
             StartTcpServer(Ip.ToString(), Port);
-            WriteLogAction("Started tcp server on port " + Port);
+            WriteLogAction("Started tcp server on port " + Port );
         }
 
         public void CommunicateWithNeighbour()
         {
             // Search for neighbour
             var neighbour = _webServerClient.SearchNeighbour(Name);
-
+            _active = true;
             // Connect to the neighbour as client
             if (neighbour != null)
                 StartTcpClient(neighbour.IpAddress, neighbour.Port);
+        }
+
+        public void StopCommmunicationWithNeighbour()
+        {
+            _active = false;
         }
 
         private void StartTcpClient(string hostname, int port)
@@ -112,19 +122,68 @@ namespace IoTSensorDataProcessing.Sensor
                     var sr = new StreamReader(stream);
                     var sw = new StreamWriter(stream) {AutoFlush = true};
                     WriteLogAction(sr.ReadLine());
-                    while (true)
+                    while (_active)
                     {
-                        var msg = "Send me measurements";
+                        var msg = "FETCH";
+                        WriteLogAction("client > req: " + msg);
                         sw.WriteLine(msg);
-                        WriteLogAction("Client sent: " + msg);
+                        
                         // Get measurement from neighbour
                         var response = sr.ReadLine();
-                        // Calculate own measurement
-                        WriteLogAction("Client received: " + response);
+                        WriteLogAction("client > resp: " + response);
+
+                        // Calculate average measurement
+                        var ownMeasure = GetMeasurement();
+                        var neighbourMeasure = RecreateMeasurement(response);
+                        var measurement = AverageMeasurement(ownMeasure, neighbourMeasure);
+
                         // Send measurement to the web server
+                        if (measurement.Temperature != null)
+                            _webServerClient.StoreMeasurement(Name, "Temperature", measurement.Temperature.Value);
+                        if (measurement.Pressure != null)
+                            _webServerClient.StoreMeasurement(Name, "Pressure", measurement.Pressure.Value);
+                        if (measurement.Humidity != null)
+                            _webServerClient.StoreMeasurement(Name, "Humidity", measurement.Humidity.Value);
+                        if (measurement.Co != null)
+                            _webServerClient.StoreMeasurement(Name, "Co", measurement.Co.Value);
+                        if (measurement.No2 != null)
+                            _webServerClient.StoreMeasurement(Name, "No2", measurement.No2.Value);
+                        if (measurement.So2 != null)
+                            _webServerClient.StoreMeasurement(Name, "So2", measurement.So2.Value);
+                        Thread.Sleep(5000);
+                        
                     }
+                    var msgStop = "STOP";
+                    WriteLogAction("client > req: " + msgStop);
+                    sw.WriteLine(msgStop);
+                    var responseStop = sr.ReadLine();
+                    WriteLogAction("server > resp: " + responseStop);
                 }
             }
+        }
+
+        private Measurement AverageMeasurement(Measurement own, Measurement neighbour)
+        {
+            return new Measurement()
+            {
+                Temperature = AverageValue(own.Temperature, neighbour.Temperature),
+                Humidity = AverageValue(own.Humidity, neighbour.Humidity),
+                Pressure = AverageValue(own.Pressure, neighbour.Pressure),
+                Co = AverageValue(own.Co, neighbour.Co),
+                No2 = AverageValue(own.No2, neighbour.No2),
+                So2 = AverageValue(own.So2, neighbour.So2)
+            };
+        }
+
+        private float? AverageValue(float? own, float? neighbour)
+        {
+            return own == null ? neighbour
+                               : (neighbour == null ? own : (own + neighbour) / 2);
+        }
+
+        public void StopTcpClient()
+        {
+            _active = false;
         }
 
         private void StartTcpServer(string ipAdr, int port)
@@ -135,20 +194,22 @@ namespace IoTSensorDataProcessing.Sensor
 
             for (int i = 0; i < Threads; i++)
             {
-                Thread t = new Thread(new ThreadStart(Loop));
+                Thread t = new Thread(Loop);
                 t.Start();
+                _activeConnections += 1;
             }
 
         }
 
+        // server
         public void Loop()
         {
             while (true)
             {
                 using (var socket = _listener.AcceptSocket())
                 {
-                    socket.SetSocketOption(SocketOptionLevel.Socket,
-                        SocketOptionName.ReceiveTimeout, 10000);
+                    //socket.SetSocketOption(SocketOptionLevel.Socket,
+                    //    SocketOptionName.ReceiveTimeout, 10000);
                     try
                     {
                         using (var s = new NetworkStream(socket))
@@ -160,10 +221,14 @@ namespace IoTSensorDataProcessing.Sensor
                             while (true)
                             {
                                 string request = sr.ReadLine();
-                                WriteLogAction("Server received: " + request);
-                                //if (string.IsNullOrEmpty(name)) break;
+                                if (request != null && request.ToLower().Equals("stop"))
+                                {
+                                    sw.WriteLine("OK");
+                                    WriteLogAction("server > send: OK");
+                                    break;
+                                }
                                 var msg = ConstructMessage(GetMeasurement());
-                                WriteLogAction("Server sent: " + msg);
+                                WriteLogAction("server > send: " + msg);
                                 sw.WriteLine(msg);
                             }
                         }
@@ -173,8 +238,39 @@ namespace IoTSensorDataProcessing.Sensor
                         WriteLogAction(e.Message);
                         break;
                     }
+                    finally
+                    {
+                        _activeConnections -= 1;
+                    }
                 }
             }
+        }
+
+        private Measurement RecreateMeasurement(string message)
+        {
+            var col = message.Split(',');
+            if (col.Length < 6)
+            {
+                return new Measurement();
+            }
+
+            float tmp;
+            float? temp = float.TryParse(col[0], out tmp) ? tmp : default(float);
+            float? press = float.TryParse(col[1], out tmp) ? tmp : default(int);
+            float? hum = float.TryParse(col[2], out tmp) ? tmp : default(int);
+            var co = float.TryParse(col[3], out tmp) ? tmp : default(float?);
+            var no2 = float.TryParse(col[4], out tmp) ? tmp : default(float?);
+            var so2 = float.TryParse(col[5], out tmp) ? tmp : default(float?);
+            return new Measurement()
+            {
+                Temperature = temp,
+                Pressure = press,
+                Humidity = hum,
+                Co = co,
+                No2 = no2,
+                So2 = so2
+            };
+
         }
 
         private string ConstructMessage(Measurement measurement)
@@ -203,33 +299,37 @@ namespace IoTSensorDataProcessing.Sensor
         private int SetPort()
         {
             int port = 2055;
-            WriteLogAction(Port.ToString());
             while (true)
             {
                 if (CheckPortAvaliable(port)) return port;
                 port++;
             }
-            //return port;
             // TO-DO max port number?
         }
 
         private bool CheckPortAvaliable(int port)
         {
-            bool isAvailable = true;
-
-            // Evaluate current system tcp connections. This is the same information provided
-            // by the netstat command line application, just in .Net strongly-typed object
-            // form.  We will look through the list, and if our port we would like to use
-            // in our TcpClient is occupied, we will set isAvailable to false.
+            var isAvailable = true;
             var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
-            var tcpConnInfoArray = ipGlobalProperties.GetActiveTcpConnections();
+            var tcpConnInfoArray = ipGlobalProperties.GetActiveTcpListeners();
 
             foreach (var tcpi in tcpConnInfoArray)
+            {
+                if (tcpi.Port == port)
+                {
+                    isAvailable = false;
+                    return isAvailable;
+                }
+            }
+
+            var tcpConnInfoArray2 = ipGlobalProperties.GetActiveTcpConnections();
+
+            foreach (var tcpi in tcpConnInfoArray2)
             {
                 if (tcpi.LocalEndPoint.Port == port)
                 {
                     isAvailable = false;
-                    break;
+                    return isAvailable;
                 }
             }
             return isAvailable;
@@ -293,34 +393,20 @@ namespace IoTSensorDataProcessing.Sensor
             return measurements;
         }
 
-        private static IPAddress GetIpAddress(params string[] names)
+        private static IPAddress GetIpAddress()
         {
-            //string name = (names.Length < 1) ? Dns.GetHostName() : names[0];
-            //try
-            //{
-            //    var hostEntry = Dns.GetHostEntry(name);
-            //    IPAddress[] addrs = hostEntry.AddressList;
-            //    //foreach (IPAddress addr in addrs)
-            //    //    Console.WriteLine("{0}/{1}", name, addr);
-            //    return addrs[0];
-            //}
-            //catch (Exception e)
-            //{
-            //    Console.WriteLine(e.Message);
-            //    return null;
-            //}
             return IPAddress.Parse("127.0.0.1");
         }
     }
 
     public class Measurement
     {
-        public int Temperature { get; set; }
-        public int Pressure { get; set; }
-        public int Humidity { get; set; }
-        public int? Co { get; set; }
-        public int? No2 { get; set; }
-        public int? So2 { get; set; }
+        public float? Temperature { get; set; }
+        public float? Pressure { get; set; }
+        public float? Humidity { get; set; }
+        public float? Co { get; set; }
+        public float? No2 { get; set; }
+        public float? So2 { get; set; }
     }
 
 }
