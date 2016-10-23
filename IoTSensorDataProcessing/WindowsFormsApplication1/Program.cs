@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using IoTSensorDataProcessing.Sensor.ServerReference;
 
-namespace IoTSensorDataProcessing.Sensor
+namespace WindowsFormsApplication1
 {
     static class Program
     {
@@ -19,7 +16,7 @@ namespace IoTSensorDataProcessing.Sensor
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new SensorForm());
+            Application.Run(new Form1());
         }
     }
 }
