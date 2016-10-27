@@ -20,8 +20,15 @@ namespace IoTSensorDataProcessing.Sensor
         private bool _active = false;
 
         private const int Threads = 5;
-        private const int MaxClients = 10;
+        private const int MaxClients = 5;
         private int _activeConnections = 0;
+
+        private double longMin = 15.87;
+        private double longMax = 16;
+        private double latMin = 45.75;
+        private double latMax = 45.85;
+
+        private static object _lockObj = new object();
 
         public string Name { get; }
         public IPAddress Ip { get; }
@@ -31,7 +38,7 @@ namespace IoTSensorDataProcessing.Sensor
 
         public ICollection<Measurement> Measurements { get; }
 
-        private Stopwatch _stopwatch;
+        private readonly Stopwatch _stopwatch;
         private readonly Random _rand;
         #region private static readonly string[] Names 
 
@@ -67,15 +74,26 @@ namespace IoTSensorDataProcessing.Sensor
         private static ServerClient _webServerClient;
 
         public Action<string> WriteLogAction { get; set; }
+        public Action<string> UpdateActiveConnAction { get; set; }
 
-        public Sensor(string filePath, double longMin = 15.87,
-            double longMax = 16, double latMin = 45.75, double latMax = 45.85,
-            Action<string> writeLogAction = null)
+        public int ActiveConnections
+        {
+            get { return _activeConnections; }
+            set
+            {
+                lock (_lockObj)
+                {
+                    _activeConnections = value;
+                }
+                UpdateActiveConnAction(value.ToString());
+            }
+        }
+
+        public Sensor(string filePath)
         {
             // Register sensor on the web service
-            WriteLogAction = writeLogAction;
-            if (writeLogAction == null)
-                WriteLogAction = Console.WriteLine;
+            WriteLogAction = WriteLogAction ?? Console.WriteLine;
+            UpdateActiveConnAction = WriteLogAction ?? Console.WriteLine;
 
             _rand = new Random();
             Name = SetName();
@@ -194,9 +212,8 @@ namespace IoTSensorDataProcessing.Sensor
 
             for (int i = 0; i < Threads; i++)
             {
-                Thread t = new Thread(Loop);
+                Thread t = new Thread(Loop) {IsBackground = true};
                 t.Start();
-                _activeConnections += 1;
             }
 
         }
@@ -206,43 +223,45 @@ namespace IoTSensorDataProcessing.Sensor
         {
             while (true)
             {
-                using (var socket = _listener.AcceptSocket())
+                var socket = _listener.AcceptSocket();
+                
+                //socket.SetSocketOption(SocketOptionLevel.Socket,
+                //    SocketOptionName.ReceiveTimeout, 10000);
+                try
                 {
-                    //socket.SetSocketOption(SocketOptionLevel.Socket,
-                    //    SocketOptionName.ReceiveTimeout, 10000);
-                    try
+                    ActiveConnections += 1;
+                    using (var s = new NetworkStream(socket))
                     {
-                        using (var s = new NetworkStream(socket))
-                        {
-                            var sr = new StreamReader(s);
-                            var sw = new StreamWriter(s) {AutoFlush = true};
+                        var sr = new StreamReader(s);
+                        var sw = new StreamWriter(s) {AutoFlush = true};
 
-                            sw.WriteLine("");
-                            while (true)
+                        sw.WriteLine("");
+                        while (true)
+                        {
+                            string request = sr.ReadLine();
+                            if (request != null && request.ToLower().Equals("stop"))
                             {
-                                string request = sr.ReadLine();
-                                if (request != null && request.ToLower().Equals("stop"))
-                                {
-                                    sw.WriteLine("OK");
-                                    WriteLogAction("server > send: OK");
-                                    break;
-                                }
-                                var msg = ConstructMessage(GetMeasurement());
-                                WriteLogAction("server > send: " + msg);
-                                sw.WriteLine(msg);
+                                sw.WriteLine("OK");
+                                WriteLogAction("server > send: OK");
+                                socket.Close();
+                                break;
                             }
+                            var msg = ConstructMessage(GetMeasurement());
+                            WriteLogAction("server > send: " + msg);
+                            sw.WriteLine(msg);
                         }
                     }
-                    catch (Exception e)
-                    {
-                        WriteLogAction(e.Message);
-                        break;
-                    }
-                    finally
-                    {
-                        _activeConnections -= 1;
-                    }
                 }
+                catch (Exception e)
+                {
+                    WriteLogAction(e.Message);
+                    return;
+                }
+                finally
+                {
+                    socket.Close();
+                    ActiveConnections -= 1;
+                }   
             }
         }
 

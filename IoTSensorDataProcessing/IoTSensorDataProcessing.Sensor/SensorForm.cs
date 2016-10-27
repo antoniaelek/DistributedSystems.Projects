@@ -12,23 +12,24 @@ namespace IoTSensorDataProcessing.Sensor
         {
             InitializeComponent();
             textBox1.Text = "";
-            _sensor = new Sensor(@"./measurements.csv",writeLogAction: s =>
+            _sensor = new Sensor(@"./measurements.csv");
+            _sensor.WriteLogAction = s =>
             {
                 var s2 = s + Environment.NewLine;
                 textBox1.Text += s2;
                 textBox1.Refresh();
-            });
+            };
+            _sensor.UpdateActiveConnAction = s =>
+            {
+                activeConnectionslabel.Text = "Active Connections: " + s;
+                activeConnectionslabel.Refresh();
+            };
             this.Text = _sensor.Name;
             nameLabel.Text += " " + _sensor.Name;
             ipAddressLabel.Text += " " + _sensor.Ip.ToString();
             portLabel.Text += " " + _sensor.Port;
             locationLabel.Text += " [" + _sensor.Longitude 
                                 + ", " + _sensor.Latitude + "]";
-        }
-
-        private void textBox1_TextChanged(object sender, System.EventArgs e)
-        {
-
         }
 
         private void buttonSendMeasure_Click(object sender, EventArgs e)
