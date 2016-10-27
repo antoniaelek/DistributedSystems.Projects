@@ -6,7 +6,7 @@ namespace IoTSensorDataProcessing.Sensor
 {
     public partial class SensorForm : Form
     {
-        private Sensor _sensor;
+        private readonly Sensor _sensor;
 
         public SensorForm()
         {

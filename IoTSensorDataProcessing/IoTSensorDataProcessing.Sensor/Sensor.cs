@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -76,7 +75,7 @@ namespace IoTSensorDataProcessing.Sensor
             // Register sensor on the web service
             WriteLogAction = writeLogAction;
             if (writeLogAction == null)
-                WriteLogAction = s => Console.WriteLine(s);
+                WriteLogAction = Console.WriteLine;
 
             _rand = new Random();
             Name = SetName();
@@ -123,7 +122,7 @@ namespace IoTSensorDataProcessing.Sensor
                     var sr = new StreamReader(stream);
                     var sw = new StreamWriter(stream) {AutoFlush = true};
                     WriteLogAction(sr.ReadLine());
-                    while (_active == true)
+                    while (_active)
                     {
                         var msg = "FETCH";
                         WriteLogAction("client > req: " + msg);
@@ -131,11 +130,26 @@ namespace IoTSensorDataProcessing.Sensor
                         
                         // Get measurement from neighbour
                         var response = sr.ReadLine();
-
-                        // Calculate own measurement
                         WriteLogAction("client > resp: " + response);
 
+                        // Calculate average measurement
+                        var ownMeasure = GetMeasurement();
+                        var neighbourMeasure = RecreateMeasurement(response);
+                        var measurement = AverageMeasurement(ownMeasure, neighbourMeasure);
+
                         // Send measurement to the web server
+                        if (measurement.Temperature != null)
+                            _webServerClient.StoreMeasurement(Name, "Temperature", measurement.Temperature.Value);
+                        if (measurement.Pressure != null)
+                            _webServerClient.StoreMeasurement(Name, "Pressure", measurement.Pressure.Value);
+                        if (measurement.Humidity != null)
+                            _webServerClient.StoreMeasurement(Name, "Humidity", measurement.Humidity.Value);
+                        if (measurement.Co != null)
+                            _webServerClient.StoreMeasurement(Name, "Co", measurement.Co.Value);
+                        if (measurement.No2 != null)
+                            _webServerClient.StoreMeasurement(Name, "No2", measurement.No2.Value);
+                        if (measurement.So2 != null)
+                            _webServerClient.StoreMeasurement(Name, "So2", measurement.So2.Value);
                         Thread.Sleep(5000);
                         
                     }
@@ -146,6 +160,25 @@ namespace IoTSensorDataProcessing.Sensor
                     WriteLogAction("server > resp: " + responseStop);
                 }
             }
+        }
+
+        private Measurement AverageMeasurement(Measurement own, Measurement neighbour)
+        {
+            return new Measurement()
+            {
+                Temperature = AverageValue(own.Temperature, neighbour.Temperature),
+                Humidity = AverageValue(own.Humidity, neighbour.Humidity),
+                Pressure = AverageValue(own.Pressure, neighbour.Pressure),
+                Co = AverageValue(own.Co, neighbour.Co),
+                No2 = AverageValue(own.No2, neighbour.No2),
+                So2 = AverageValue(own.So2, neighbour.So2)
+            };
+        }
+
+        private float? AverageValue(float? own, float? neighbour)
+        {
+            return own == null ? neighbour
+                               : (neighbour == null ? own : (own + neighbour) / 2);
         }
 
         public void StopTcpClient()
@@ -161,8 +194,9 @@ namespace IoTSensorDataProcessing.Sensor
 
             for (int i = 0; i < Threads; i++)
             {
-                Thread t = new Thread(new ThreadStart(Loop));
+                Thread t = new Thread(Loop);
                 t.Start();
+                _activeConnections += 1;
             }
 
         }
@@ -187,8 +221,7 @@ namespace IoTSensorDataProcessing.Sensor
                             while (true)
                             {
                                 string request = sr.ReadLine();
-                                WriteLogAction("server > rec: " + request);
-                                if (request.ToLower().Equals("stop"))
+                                if (request != null && request.ToLower().Equals("stop"))
                                 {
                                     sw.WriteLine("OK");
                                     WriteLogAction("server > send: OK");
@@ -205,8 +238,39 @@ namespace IoTSensorDataProcessing.Sensor
                         WriteLogAction(e.Message);
                         break;
                     }
+                    finally
+                    {
+                        _activeConnections -= 1;
+                    }
                 }
             }
+        }
+
+        private Measurement RecreateMeasurement(string message)
+        {
+            var col = message.Split(',');
+            if (col.Length < 6)
+            {
+                return new Measurement();
+            }
+
+            float tmp;
+            float? temp = float.TryParse(col[0], out tmp) ? tmp : default(float);
+            float? press = float.TryParse(col[1], out tmp) ? tmp : default(int);
+            float? hum = float.TryParse(col[2], out tmp) ? tmp : default(int);
+            var co = float.TryParse(col[3], out tmp) ? tmp : default(float?);
+            var no2 = float.TryParse(col[4], out tmp) ? tmp : default(float?);
+            var so2 = float.TryParse(col[5], out tmp) ? tmp : default(float?);
+            return new Measurement()
+            {
+                Temperature = temp,
+                Pressure = press,
+                Humidity = hum,
+                Co = co,
+                No2 = no2,
+                So2 = so2
+            };
+
         }
 
         private string ConstructMessage(Measurement measurement)
@@ -329,7 +393,7 @@ namespace IoTSensorDataProcessing.Sensor
             return measurements;
         }
 
-        private static IPAddress GetIpAddress(params string[] names)
+        private static IPAddress GetIpAddress()
         {
             return IPAddress.Parse("127.0.0.1");
         }
@@ -337,12 +401,12 @@ namespace IoTSensorDataProcessing.Sensor
 
     public class Measurement
     {
-        public int Temperature { get; set; }
-        public int Pressure { get; set; }
-        public int Humidity { get; set; }
-        public int? Co { get; set; }
-        public int? No2 { get; set; }
-        public int? So2 { get; set; }
+        public float? Temperature { get; set; }
+        public float? Pressure { get; set; }
+        public float? Humidity { get; set; }
+        public float? Co { get; set; }
+        public float? No2 { get; set; }
+        public float? So2 { get; set; }
     }
 
 }
