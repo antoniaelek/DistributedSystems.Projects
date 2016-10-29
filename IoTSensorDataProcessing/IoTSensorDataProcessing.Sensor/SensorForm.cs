@@ -24,7 +24,7 @@ namespace IoTSensorDataProcessing.Sensor
             _sensor.UpdateActiveConnAction = s =>
             {
                 activeConnectionslabel.Text = "Active server connections: " 
-                                        + s + "/" + _sensor.ActiveConnections;
+                                        + s + "/" + _sensor.Threads;
                 activeConnectionslabel.Refresh();
             };
             Text = _sensor.Name;

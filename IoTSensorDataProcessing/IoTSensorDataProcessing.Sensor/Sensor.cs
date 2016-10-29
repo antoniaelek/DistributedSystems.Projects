@@ -29,7 +29,7 @@ namespace IoTSensorDataProcessing.Sensor
         private int MAXPORTNUMBER = 65535;
 
         private static readonly object LockObj = new object();
-        
+
         public string Name { get; }
         public IPAddress Ip { get; }
         public int Port { get; }
@@ -102,18 +102,18 @@ namespace IoTSensorDataProcessing.Sensor
             Latitude = SetPosition(latMin, latMax);
             Measurements = ParseCsvFile(filePath);
             Ip = GetIpAddress();
-            
+
             // Stopwatch
             _stopwatch = new Stopwatch();
             _stopwatch.Start();
 
             if (_webServerClient == null) _webServerClient = new ServerClient();
             _webServerClient.Register(Name, Latitude, Longitude, Ip.ToString(), Port);
-            WriteLogAction("Sensor registered." );
+            WriteLogAction("Sensor registered.");
 
             // Start tcp server
             StartTcpServer(Ip.ToString(), Port);
-            WriteLogAction("Started tcp server on port " + Port );
+            WriteLogAction("Started tcp server on port " + Port);
         }
 
         public void CommunicateWithNeighbour()
@@ -139,14 +139,14 @@ namespace IoTSensorDataProcessing.Sensor
                 using (var stream = _client.GetStream())
                 {
                     var sr = new StreamReader(stream);
-                    var sw = new StreamWriter(stream) {AutoFlush = true};
+                    var sw = new StreamWriter(stream) { AutoFlush = true };
                     WriteLogAction(sr.ReadLine());
                     while (_active)
                     {
                         var msg = "FETCH";
                         WriteLogAction("client > req: " + msg);
                         sw.WriteLine(msg);
-                        
+
                         // Get measurement from neighbour
                         var response = sr.ReadLine();
                         WriteLogAction("client > resp: " + response);
@@ -209,12 +209,12 @@ namespace IoTSensorDataProcessing.Sensor
         private void StartTcpServer(string ipAdr, int port)
         {
             _listener = new TcpListener(
-                new IPEndPoint(IPAddress.Parse(ipAdr),port));
+                new IPEndPoint(IPAddress.Parse(ipAdr), port));
             _listener.Start();
 
             for (int i = 0; i < Threads; i++)
             {
-                Thread t = new Thread(Loop) {IsBackground = true};
+                Thread t = new Thread(Loop) { IsBackground = true };
                 t.Start();
             }
 
@@ -225,7 +225,8 @@ namespace IoTSensorDataProcessing.Sensor
         {
             while (true)
             {
-                using (var socket = _listener.AcceptSocket()) { 
+                using (var socket = _listener.AcceptSocket())
+                {
 
                     try
                     {
@@ -297,20 +298,20 @@ namespace IoTSensorDataProcessing.Sensor
             return measurement.Temperature + ","
                    + measurement.Pressure + ","
                    + measurement.Humidity + ","
-                   + (measurement.Co == default(int?) 
-                      ? "" : measurement.Co.ToString()) 
+                   + (measurement.Co == default(int?)
+                      ? "" : measurement.Co.ToString())
                    + ","
-                   + (measurement.No2 == default(int?) 
-                      ? "" : measurement.No2.ToString()) 
+                   + (measurement.No2 == default(int?)
+                      ? "" : measurement.No2.ToString())
                    + ","
-                   + (measurement.So2 == default(int?) 
+                   + (measurement.So2 == default(int?)
                       ? "" : measurement.So2.ToString());
         }
 
         private Measurement GetMeasurement()
         {
             var time = (int)
-                Math.Round((decimal) _stopwatch.ElapsedMilliseconds/1000);
+                Math.Round((decimal)_stopwatch.ElapsedMilliseconds / 1000);
             var index = time % 100;
             return Measurements.ElementAtOrDefault(index);
         }
