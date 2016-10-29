@@ -13,6 +13,8 @@ namespace IoTSensorDataProcessing.Sensor
             InitializeComponent();
             textBox1.Text = "";
             _sensor = new Sensor(@"./measurements.csv");
+            activeConnectionslabel.Text = "Active server connections: 0"
+                                        + "/" + _sensor.Threads;
             _sensor.WriteLogAction = s =>
             {
                 var s2 = s + Environment.NewLine;
@@ -21,15 +23,22 @@ namespace IoTSensorDataProcessing.Sensor
             };
             _sensor.UpdateActiveConnAction = s =>
             {
-                activeConnectionslabel.Text = "Active Connections: " + s;
+                activeConnectionslabel.Text = "Active server connections: " 
+                                        + s + "/" + _sensor.ActiveConnections;
                 activeConnectionslabel.Refresh();
             };
-            this.Text = _sensor.Name;
+            Text = _sensor.Name;
             nameLabel.Text += " " + _sensor.Name;
-            ipAddressLabel.Text += " " + _sensor.Ip.ToString();
+            ipAddressLabel.Text += " " + _sensor.Ip;
             portLabel.Text += " " + _sensor.Port;
             locationLabel.Text += " [" + _sensor.Longitude 
                                 + ", " + _sensor.Latitude + "]";
+        }
+
+        public sealed override string Text
+        {
+            get { return base.Text; }
+            set { base.Text = value; }
         }
 
         private void buttonSendMeasure_Click(object sender, EventArgs e)

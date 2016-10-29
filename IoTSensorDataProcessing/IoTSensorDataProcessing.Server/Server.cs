@@ -78,7 +78,6 @@ namespace IoTSensorDataProcessing
                 var errorMessage = "Unable to find closest neighbour"
                                    + " to sensor " + sensor1.Username + ".";
                 WriteLog(errorMessage, EventLogEntryType.Error);
-                // throw new ApplicationException(errorMessage);
                 return null;
             }
 
