@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.ServiceModel;
-using System.Threading;
 
 namespace IoTSensorDataProcessing
 {
@@ -13,22 +10,15 @@ namespace IoTSensorDataProcessing
     {
         public ISet<UserAddress> Sensors { get; set; }
         public ICollection<Measurement> Measurements { get; set; }
-        private static string _eventLogSource = "Application";// "IoTDataProcessingServer";
-        private static string _eventLogName = "ServerLog";
 
         public Server()
         {
             Sensors = new HashSet<UserAddress>();
             Measurements = new List<Measurement>();
-            if (!EventLog.SourceExists(_eventLogSource))
-            {
-                EventLog.CreateEventSource(_eventLogSource, _eventLogName);
-                Thread.Sleep(2000);
-            }
         }
 
         public bool Register(string username, double latitude,
-                             double longitude, string ipAddress, int port)
+            double longitude, string ipAddress, int port)
         {
             // if sensor is already registered
             if (Sensors.FirstOrDefault(s => s.Username == username) != null)
@@ -77,7 +67,7 @@ namespace IoTSensorDataProcessing
             {
                 var errorMessage = "Unable to find closest neighbour"
                                    + " to sensor " + sensor1.Username + ".";
-                WriteLog(errorMessage, EventLogEntryType.Error);
+                WriteLog(errorMessage);
                 return null;
             }
 
@@ -90,7 +80,7 @@ namespace IoTSensorDataProcessing
         }
 
         public bool StoreMeasurement(string username, string parameter,
-                                     float averageValue)
+            float averageValue)
         {
             try
             {
@@ -118,12 +108,8 @@ namespace IoTSensorDataProcessing
 
         #region Helpers
 
-        private static void WriteLog(string message,
-            EventLogEntryType messageType = EventLogEntryType.Information)
+        private static void WriteLog(string message)
         {
-            //EventLog serverLog = new EventLog();
-            //serverLog.Source = _eventLogSource;
-            //serverLog.WriteEntry(message, messageType);
             Console.WriteLine(message);
         }
 
