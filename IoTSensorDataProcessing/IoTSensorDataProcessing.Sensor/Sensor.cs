@@ -17,19 +17,19 @@ namespace IoTSensorDataProcessing.Sensor
         private TcpListener _listener;
         private TcpClient _client;
 
-        private bool _active = false;
+        private bool _active;
 
-        private const int Threads = 5;
-        private const int MaxClients = 5;
-        private int _activeConnections = 0;
+        public int Threads { get; } = 5;
+        private int _activeConnections;
 
         private double longMin = 15.87;
         private double longMax = 16;
         private double latMin = 45.75;
         private double latMax = 45.85;
+        private int MAXPORTNUMBER = 65535;
 
-        private static object _lockObj = new object();
-
+        private static readonly object LockObj = new object();
+        
         public string Name { get; }
         public IPAddress Ip { get; }
         public int Port { get; }
@@ -81,7 +81,7 @@ namespace IoTSensorDataProcessing.Sensor
             get { return _activeConnections; }
             set
             {
-                lock (_lockObj)
+                lock (LockObj)
                 {
                     _activeConnections = value;
                 }
@@ -96,13 +96,13 @@ namespace IoTSensorDataProcessing.Sensor
             UpdateActiveConnAction = WriteLogAction ?? Console.WriteLine;
 
             _rand = new Random();
-            Name = SetName();
             Port = SetPort();
+            Name = SetName(Port);
             Longitude = SetPosition(longMin, longMax);
             Latitude = SetPosition(latMin, latMax);
             Measurements = ParseCsvFile(filePath);
             Ip = GetIpAddress();
-
+            
             // Stopwatch
             _stopwatch = new Stopwatch();
             _stopwatch.Start();
@@ -121,6 +121,7 @@ namespace IoTSensorDataProcessing.Sensor
             // Search for neighbour
             var neighbour = _webServerClient.SearchNeighbour(Name);
             _active = true;
+
             // Connect to the neighbour as client
             if (neighbour != null)
                 StartTcpClient(neighbour.IpAddress, neighbour.Port);
@@ -168,9 +169,10 @@ namespace IoTSensorDataProcessing.Sensor
                             _webServerClient.StoreMeasurement(Name, "No2", measurement.No2.Value);
                         if (measurement.So2 != null)
                             _webServerClient.StoreMeasurement(Name, "So2", measurement.So2.Value);
+
                         Thread.Sleep(5000);
-                        
                     }
+
                     var msgStop = "STOP";
                     WriteLogAction("client > req: " + msgStop);
                     sw.WriteLine(msgStop);
@@ -223,45 +225,43 @@ namespace IoTSensorDataProcessing.Sensor
         {
             while (true)
             {
-                var socket = _listener.AcceptSocket();
-                
-                //socket.SetSocketOption(SocketOptionLevel.Socket,
-                //    SocketOptionName.ReceiveTimeout, 10000);
-                try
-                {
-                    ActiveConnections += 1;
-                    using (var s = new NetworkStream(socket))
-                    {
-                        var sr = new StreamReader(s);
-                        var sw = new StreamWriter(s) {AutoFlush = true};
+                using (var socket = _listener.AcceptSocket()) { 
 
-                        sw.WriteLine("");
-                        while (true)
+                    try
+                    {
+                        ActiveConnections += 1;
+                        using (var s = new NetworkStream(socket))
                         {
-                            string request = sr.ReadLine();
-                            if (request != null && request.ToLower().Equals("stop"))
+                            var sr = new StreamReader(s);
+                            var sw = new StreamWriter(s) { AutoFlush = true };
+
+                            sw.WriteLine("");
+                            while (true)
                             {
-                                sw.WriteLine("OK");
-                                WriteLogAction("server > send: OK");
-                                socket.Close();
-                                break;
+                                string request = sr.ReadLine();
+                                if (request != null && request.ToLower().Equals("stop"))
+                                {
+                                    sw.WriteLine("OK");
+                                    WriteLogAction("server > send: OK");
+                                    socket.Close();
+                                    break;
+                                }
+                                var msg = ConstructMessage(GetMeasurement());
+                                WriteLogAction("server > send: " + msg);
+                                sw.WriteLine(msg);
                             }
-                            var msg = ConstructMessage(GetMeasurement());
-                            WriteLogAction("server > send: " + msg);
-                            sw.WriteLine(msg);
                         }
                     }
+                    catch (Exception e)
+                    {
+                        WriteLogAction(e.Message);
+                        return;
+                    }
+                    finally
+                    {
+                        ActiveConnections -= 1;
+                    }
                 }
-                catch (Exception e)
-                {
-                    WriteLogAction(e.Message);
-                    return;
-                }
-                finally
-                {
-                    socket.Close();
-                    ActiveConnections -= 1;
-                }   
             }
         }
 
@@ -311,7 +311,7 @@ namespace IoTSensorDataProcessing.Sensor
         {
             var time = (int)
                 Math.Round((decimal) _stopwatch.ElapsedMilliseconds/1000);
-            var index = time % 100 + 2;
+            var index = time % 100;
             return Measurements.ElementAtOrDefault(index);
         }
 
@@ -322,13 +322,12 @@ namespace IoTSensorDataProcessing.Sensor
             {
                 if (CheckPortAvaliable(port)) return port;
                 port++;
+                if (port > MAXPORTNUMBER) throw new ApplicationException("Unable to find free port.");
             }
-            // TO-DO max port number?
         }
 
         private bool CheckPortAvaliable(int port)
         {
-            var isAvailable = true;
             var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
             var tcpConnInfoArray = ipGlobalProperties.GetActiveTcpListeners();
 
@@ -336,8 +335,7 @@ namespace IoTSensorDataProcessing.Sensor
             {
                 if (tcpi.Port == port)
                 {
-                    isAvailable = false;
-                    return isAvailable;
+                    return false;
                 }
             }
 
@@ -347,14 +345,13 @@ namespace IoTSensorDataProcessing.Sensor
             {
                 if (tcpi.LocalEndPoint.Port == port)
                 {
-                    isAvailable = false;
-                    return isAvailable;
+                    return false;
                 }
             }
-            return isAvailable;
+            return true;
         }
 
-        private string SetName()
+        private string SetName(int? appendNumber = null)
         {
             var index = Convert.ToInt32(
                 Math.Floor(SetPosition(0, Names.Length - 1)));
@@ -362,7 +359,7 @@ namespace IoTSensorDataProcessing.Sensor
             index = Convert.ToInt32(
                 Math.Floor(SetPosition(0, Names.Length - 1)));
             var part2 = Names[index];
-            return part1 + "_" + part2;
+            return part1 + "_" + part2 + ((appendNumber == null) ? "" : "_" + appendNumber);
         }
 
         private double SetPosition(double min, double max)

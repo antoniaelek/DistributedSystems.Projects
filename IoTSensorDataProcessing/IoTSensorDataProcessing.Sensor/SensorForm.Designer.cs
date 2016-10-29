@@ -113,9 +113,9 @@
             this.activeConnectionslabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.activeConnectionslabel.Location = new System.Drawing.Point(6, 89);
             this.activeConnectionslabel.Name = "activeConnectionslabel";
-            this.activeConnectionslabel.Size = new System.Drawing.Size(122, 15);
+            this.activeConnectionslabel.Size = new System.Drawing.Size(156, 15);
             this.activeConnectionslabel.TabIndex = 4;
-            this.activeConnectionslabel.Text = "Active Connections: 0";
+            this.activeConnectionslabel.Text = "Active server connections: 0";
             // 
             // buttonSendMeasure
             // 
