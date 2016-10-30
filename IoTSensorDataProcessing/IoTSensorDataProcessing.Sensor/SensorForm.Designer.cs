@@ -122,9 +122,9 @@
             this.buttonSendMeasure.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.buttonSendMeasure.Location = new System.Drawing.Point(13, 296);
             this.buttonSendMeasure.Name = "buttonSendMeasure";
-            this.buttonSendMeasure.Size = new System.Drawing.Size(118, 23);
+            this.buttonSendMeasure.Size = new System.Drawing.Size(129, 23);
             this.buttonSendMeasure.TabIndex = 6;
-            this.buttonSendMeasure.Text = "Send measurements";
+            this.buttonSendMeasure.Text = "Compare measurements";
             this.buttonSendMeasure.UseVisualStyleBackColor = true;
             this.buttonSendMeasure.Click += new System.EventHandler(this.buttonSendMeasure_Click);
             // 
@@ -132,11 +132,11 @@
             // 
             this.buttonStopSending.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.buttonStopSending.Enabled = false;
-            this.buttonStopSending.Location = new System.Drawing.Point(138, 296);
+            this.buttonStopSending.Location = new System.Drawing.Point(148, 296);
             this.buttonStopSending.Name = "buttonStopSending";
             this.buttonStopSending.Size = new System.Drawing.Size(118, 23);
             this.buttonStopSending.TabIndex = 7;
-            this.buttonStopSending.Text = "Stop sending";
+            this.buttonStopSending.Text = "Stop";
             this.buttonStopSending.UseVisualStyleBackColor = true;
             this.buttonStopSending.Click += new System.EventHandler(this.buttonStopSending_Click);
             // 

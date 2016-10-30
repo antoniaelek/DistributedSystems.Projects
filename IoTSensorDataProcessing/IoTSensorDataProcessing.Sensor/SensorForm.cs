@@ -46,7 +46,7 @@ namespace IoTSensorDataProcessing.Sensor
             buttonStopSending.Enabled = true;
             buttonSendMeasure.Enabled = false;
             Task.Factory.StartNew(() => {
-                _sensor.CommunicateWithNeighbour();
+                _sensor.ConnectToNeighbour();
             });
         }
 
@@ -54,7 +54,7 @@ namespace IoTSensorDataProcessing.Sensor
         {
             buttonSendMeasure.Enabled = true;
             buttonStopSending.Enabled = false;
-            _sensor.StopCommmunicationWithNeighbour();
+            _sensor.StopNeighbourCommmunication();
         }
     }
 }
