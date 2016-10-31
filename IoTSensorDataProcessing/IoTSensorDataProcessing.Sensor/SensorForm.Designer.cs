@@ -43,8 +43,8 @@
             // nameLabel
             // 
             this.nameLabel.AutoSize = true;
-            this.nameLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.nameLabel.Location = new System.Drawing.Point(6, 16);
+            this.nameLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.nameLabel.Location = new System.Drawing.Point(6, 21);
             this.nameLabel.Name = "nameLabel";
             this.nameLabel.Size = new System.Drawing.Size(44, 15);
             this.nameLabel.TabIndex = 0;
@@ -53,8 +53,8 @@
             // portLabel
             // 
             this.portLabel.AutoSize = true;
-            this.portLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.portLabel.Location = new System.Drawing.Point(6, 52);
+            this.portLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.portLabel.Location = new System.Drawing.Point(6, 64);
             this.portLabel.Name = "portLabel";
             this.portLabel.Size = new System.Drawing.Size(32, 15);
             this.portLabel.TabIndex = 1;
@@ -63,8 +63,8 @@
             // ipAddressLabel
             // 
             this.ipAddressLabel.AutoSize = true;
-            this.ipAddressLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ipAddressLabel.Location = new System.Drawing.Point(6, 34);
+            this.ipAddressLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.ipAddressLabel.Location = new System.Drawing.Point(6, 43);
             this.ipAddressLabel.Name = "ipAddressLabel";
             this.ipAddressLabel.Size = new System.Drawing.Size(68, 15);
             this.ipAddressLabel.TabIndex = 2;
@@ -73,8 +73,8 @@
             // locationLabel
             // 
             this.locationLabel.AutoSize = true;
-            this.locationLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.locationLabel.Location = new System.Drawing.Point(6, 70);
+            this.locationLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.locationLabel.Location = new System.Drawing.Point(6, 83);
             this.locationLabel.Name = "locationLabel";
             this.locationLabel.Size = new System.Drawing.Size(54, 15);
             this.locationLabel.TabIndex = 3;
@@ -85,9 +85,10 @@
             this.textBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBox1.Location = new System.Drawing.Point(12, 131);
+            this.textBox1.Font = new System.Drawing.Font("Courier New", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.textBox1.Location = new System.Drawing.Point(12, 146);
             this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(369, 161);
+            this.textBox1.Size = new System.Drawing.Size(446, 202);
             this.textBox1.TabIndex = 4;
             this.textBox1.Text = "";
             // 
@@ -100,9 +101,10 @@
             this.groupBox1.Controls.Add(this.ipAddressLabel);
             this.groupBox1.Controls.Add(this.locationLabel);
             this.groupBox1.Controls.Add(this.portLabel);
+            this.groupBox1.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.groupBox1.Location = new System.Drawing.Point(12, 12);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(369, 113);
+            this.groupBox1.Size = new System.Drawing.Size(446, 128);
             this.groupBox1.TabIndex = 5;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Info";
@@ -110,8 +112,8 @@
             // activeConnectionslabel
             // 
             this.activeConnectionslabel.AutoSize = true;
-            this.activeConnectionslabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.activeConnectionslabel.Location = new System.Drawing.Point(6, 89);
+            this.activeConnectionslabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.activeConnectionslabel.Location = new System.Drawing.Point(6, 103);
             this.activeConnectionslabel.Name = "activeConnectionslabel";
             this.activeConnectionslabel.Size = new System.Drawing.Size(156, 15);
             this.activeConnectionslabel.TabIndex = 4;
@@ -120,7 +122,8 @@
             // buttonSendMeasure
             // 
             this.buttonSendMeasure.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.buttonSendMeasure.Location = new System.Drawing.Point(13, 296);
+            this.buttonSendMeasure.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonSendMeasure.Location = new System.Drawing.Point(13, 352);
             this.buttonSendMeasure.Name = "buttonSendMeasure";
             this.buttonSendMeasure.Size = new System.Drawing.Size(129, 23);
             this.buttonSendMeasure.TabIndex = 6;
@@ -132,7 +135,8 @@
             // 
             this.buttonStopSending.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.buttonStopSending.Enabled = false;
-            this.buttonStopSending.Location = new System.Drawing.Point(148, 296);
+            this.buttonStopSending.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.buttonStopSending.Location = new System.Drawing.Point(148, 352);
             this.buttonStopSending.Name = "buttonStopSending";
             this.buttonStopSending.Size = new System.Drawing.Size(118, 23);
             this.buttonStopSending.TabIndex = 7;
@@ -144,7 +148,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(393, 331);
+            this.ClientSize = new System.Drawing.Size(470, 387);
             this.Controls.Add(this.buttonStopSending);
             this.Controls.Add(this.buttonSendMeasure);
             this.Controls.Add(this.groupBox1);
