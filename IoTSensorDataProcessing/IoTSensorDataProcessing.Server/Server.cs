@@ -74,7 +74,7 @@ namespace IoTSensorDataProcessing
             var message = "Distance between sensor "
                         + sensor1.Username + " and its closest neighbour "
                         + closestNeighbour.Username
-                        + " equals " + minDistance + ".";
+                        + " is " + minDistance + ".";
             WriteLog(message);
             return closestNeighbour;
         }
@@ -90,16 +90,18 @@ namespace IoTSensorDataProcessing
                     Parameter = parameter,
                     AverageValue = averageValue
                 });
-                var message = "Saved measurement (server: " + username
-                            + ",\tparameter: " + parameter
-                            + ",\taverage: " + averageValue + ").";
+                var message = "[SAVED]".PadRight(10)
+                            + username.PadRight(25)
+                            + parameter.PadRight(15)
+                            + averageValue;
                 WriteLog(message);
             }
             catch (NotSupportedException)
             {
-                var message = "Unable to save measurement (server : " + username
-                            + ",\tparameter: " + parameter
-                            + ",\ttaverage: " + averageValue + ").";
+                var message = "[FAILED]".PadRight(10)
+                            + "server: " + username.PadRight(25)
+                            + parameter.PadRight(15)
+                            + averageValue;
                 WriteLog(message);
                 return false;
             }
