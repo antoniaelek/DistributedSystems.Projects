@@ -134,8 +134,6 @@ namespace IoTSensorDataProcessing.Sensor
                 {
                     try
                     {
-                        //socket.SetSocketOption(SocketOptionLevel.Socket,
-                        //        SocketOptionName.ReceiveTimeout, 10000);
                         ActiveConnections += 1;
                         using (var s = new NetworkStream(socket))
                         {
@@ -155,7 +153,7 @@ namespace IoTSensorDataProcessing.Sensor
                                     break;
                                 }
                                 WriteLogAction("server < req: FETCH");
-                                Thread.Sleep(1000);
+                                
                                 // Calculate own measurement
                                 var time = (int)Math.Round((decimal)_stopwatch.ElapsedMilliseconds / 1000);
                                 WriteLogAction("server : elapsed " + time + "s");
@@ -186,11 +184,6 @@ namespace IoTSensorDataProcessing.Sensor
             }
         }
 
-        private int GetCsvLineNumber(int index)
-        {
-            return index + 2; // header and because enumeration n file starts from 1, not from 0
-        }
-
         public void StopNeighbourCommmunication()
         {
             _active = false;
@@ -198,6 +191,11 @@ namespace IoTSensorDataProcessing.Sensor
         #endregion
 
         #region Private Methods
+        private int GetCsvLineNumber(int index)
+        {
+            return index + 2; // one for header and one because enumeration n file starts from 1, not from 0
+        }
+
         private void StartTcpClient(string hostname, int port)
         {
             using (_client = new TcpClient(hostname, port))
@@ -206,7 +204,7 @@ namespace IoTSensorDataProcessing.Sensor
                 {
                     var sr = new StreamReader(stream);
                     var sw = new StreamWriter(stream) { AutoFlush = true };
-                    //WriteLogAction(
+
                     sr.ReadLine();
                     while (_active)
                     {
