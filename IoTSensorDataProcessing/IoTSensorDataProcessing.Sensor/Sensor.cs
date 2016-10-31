@@ -134,8 +134,8 @@ namespace IoTSensorDataProcessing.Sensor
                 {
                     try
                     {
-                        socket.SetSocketOption(SocketOptionLevel.Socket,
-                                SocketOptionName.ReceiveTimeout, 10000);
+                        //socket.SetSocketOption(SocketOptionLevel.Socket,
+                        //        SocketOptionName.ReceiveTimeout, 10000);
                         ActiveConnections += 1;
                         using (var s = new NetworkStream(socket))
                         {
@@ -155,8 +155,20 @@ namespace IoTSensorDataProcessing.Sensor
                                     break;
                                 }
                                 WriteLogAction("server < req: FETCH");
-                                var msg = ConstructMessage(GetMeasurement());
+                                Thread.Sleep(1000);
+                                // Calculate own measurement
+                                var time = (int)Math.Round((decimal)_stopwatch.ElapsedMilliseconds / 1000);
+                                WriteLogAction("server : elapsed " + time + "s");
+
+                                var index = GetMeasurement(time);
+                                var line = GetCsvLineNumber(index);
+                                WriteLogAction("server : line " + line);
+
+                                var ownMeasure = Measurements.ElementAtOrDefault(index);
+                                var msg = ConstructMessage(ownMeasure);
                                 WriteLogAction("server > resp: " + msg);
+                                
+                                // Send own measurement
                                 sw.WriteLine(msg);
                             }
                         }
@@ -172,6 +184,11 @@ namespace IoTSensorDataProcessing.Sensor
                     }
                 }
             }
+        }
+
+        private int GetCsvLineNumber(int index)
+        {
+            return index + 2; // header and because enumeration n file starts from 1, not from 0
         }
 
         public void StopNeighbourCommmunication()
@@ -193,17 +210,28 @@ namespace IoTSensorDataProcessing.Sensor
                     sr.ReadLine();
                     while (_active)
                     {
+                        // Calculate own measurement
+                        var time = (int)Math.Round((decimal)_stopwatch.ElapsedMilliseconds / 1000);
+                        WriteLogAction("client : elapsed " + time +"s");
+
+                        var index = GetMeasurement(time);
+                        var line = GetCsvLineNumber(index);
+                        WriteLogAction("client : line " + line);
+
+                        var ownMeasure = Measurements.ElementAtOrDefault(index);
+                        WriteLogAction("client : own: " + ConstructMessage(ownMeasure));
+
+                        // Get measurement from neighbour
                         var msg = "FETCH";
                         WriteLogAction("client > req: " + msg);
                         sw.WriteLine(msg);
 
-                        // Get measurement from neighbour
                         var response = sr.ReadLine();
                         WriteLogAction("client < resp: " + response);
 
-                        // Calculate average measurement
-                        var ownMeasure = GetMeasurement();
                         var neighbourMeasure = RecreateMeasurement(response);
+
+                        // Calculate average measurement
                         var measurement = AverageMeasurement(ownMeasure, neighbourMeasure);
 
                         // Send measurement to the web server
@@ -307,12 +335,10 @@ namespace IoTSensorDataProcessing.Sensor
                       ? "" : measurement.So2.ToString());
         }
 
-        private Measurement GetMeasurement()
+        private int GetMeasurement(int elapsedSeconds)
         {
-            var time = (int)
-                Math.Round((decimal)_stopwatch.ElapsedMilliseconds / 1000);
-            var index = time % 100;
-            return Measurements.ElementAtOrDefault(index);
+            var index = elapsedSeconds % 100;
+            return index;
         }
 
         private int SetPort()
