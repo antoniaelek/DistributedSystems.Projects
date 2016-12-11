@@ -8,10 +8,20 @@ import java.net.ServerSocket;
  */
 public class Config {
     private static final int MIN_PORT = 49152;
+
     private static final int MAX_PORT = 65535;
 
     private int[] peers;
+
     private int numberOfPeers;
+
+    public int[] getPeers() {
+        return peers;
+    }
+
+    public int getNumberOfPeers() {
+        return numberOfPeers;
+    }
 
     public Config(int numberOfPeers) throws Exception {
         this.numberOfPeers = numberOfPeers;
@@ -30,15 +40,7 @@ public class Config {
         }
     }
 
-    public int[] getPeers() {
-        return peers;
-    }
-
-    public int getNumberOfPeers() {
-        return numberOfPeers;
-    }
-
-    private int nextFreePort(int min, int max) throws Exception {
+    public static int nextFreePort(int min, int max) throws Exception {
         int curr = min;
         while (true) {
             if (curr > max)

@@ -1,4 +1,4 @@
-package hr.fer.tel.rassus.stupidudp;
+package hr.fer.tel.rassus.stupidudp.node;
 
 import hr.fer.tel.rassus.stupidudp.config.Config;
 import hr.fer.tel.rassus.stupidudp.network.EmulatedSystemClock;
@@ -14,10 +14,16 @@ import java.util.LinkedList;
  */
 public class Node {
     private LinkedList<String> measurements;
+
     private HashSet<Integer> peers;
+
     private long startTime;
 
     private int port;
+
+    public int getPort() {
+        return port;
+    }
 
     public Node() throws Exception {
         EmulatedSystemClock clock = new EmulatedSystemClock();
@@ -33,10 +39,6 @@ public class Node {
         }
     }
 
-    public int getPort() {
-        return port;
-    }
-
     private int loadConfig() throws Exception {
         this.peers = new HashSet<>();
         LinkedList<String> configuration = readLinesFromFile("./config.txt");
@@ -44,7 +46,7 @@ public class Node {
             try {
                 peers.add(Integer.parseInt(line));
             } catch (NumberFormatException e) {
-                // ignore
+                // ignore this line
             }
         }
 
@@ -90,25 +92,6 @@ public class Node {
         return lines;
     }
 
-    private String measure(){
-        int lineNum;
-        do {
-            long estimatedTime = System.currentTimeMillis() - startTime;
-            long active = (estimatedTime) / 1000;
-            lineNum = Math.toIntExact((active % 100) + 2);
-        } while (lineNum < 2 || lineNum - 2 > measurements.size() - 1);
-        return measurements.get(lineNum - 1);
-    }
-
-    public static void main(String[] args) {
-        try {
-            Node p = new Node();
-            System.out.println(p.getPort());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     public void Do() throws Exception {
         // create a UDP server socket and bind it to the specified port on the localhost
         try(SimpleSimulatedDatagramSocket server = new SimpleSimulatedDatagramSocket(port, 0.2, 1000)) {
@@ -149,5 +132,15 @@ public class Node {
             // sort()
             // print()
         }
+    }
+
+    private String measure(){
+        int lineNum;
+        do {
+            long estimatedTime = System.currentTimeMillis() - startTime;
+            long active = (estimatedTime) / 1000;
+            lineNum = Math.toIntExact((active % 100) + 2);
+        } while (lineNum < 2 || lineNum - 2 > measurements.size() - 1);
+        return measurements.get(lineNum - 1);
     }
 }
