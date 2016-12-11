@@ -5,6 +5,7 @@ import hr.fer.tel.rassus.stupidudp.network.EmulatedSystemClock;
 import hr.fer.tel.rassus.stupidudp.network.SimpleSimulatedDatagramSocket;
 
 import java.io.*;
+import java.net.ServerSocket;
 import java.util.HashSet;
 import java.util.LinkedList;
 
@@ -16,6 +17,8 @@ public class Node {
     private LinkedList<String> measurements;
 
     private HashSet<Integer> peers;
+
+    private LinkedList<String> configuration;
 
     private long startTime;
 
@@ -41,7 +44,7 @@ public class Node {
 
     private int loadConfig() throws Exception {
         this.peers = new HashSet<>();
-        LinkedList<String> configuration = readLinesFromFile("./config.txt");
+        configuration = readLinesFromFile("./config.txt");
         for (String line : configuration) {
             try {
                 peers.add(Integer.parseInt(line));
@@ -92,39 +95,59 @@ public class Node {
         return lines;
     }
 
+    public static boolean isLocalPortFree(int port) {
+        try {
+            new SimpleSimulatedDatagramSocket(port, 0.2, 1000).close();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     public void Do() throws Exception {
         // create a UDP server socket and bind it to the specified port on the localhost
         try(SimpleSimulatedDatagramSocket server = new SimpleSimulatedDatagramSocket(port, 0.2, 1000)) {
-            System.out.println("Opened port " + port);
+            System.out.println("UDP server at port " + port);
 
             // new thread that sends measurements
-            Runnable client = () -> {
-                System.out.println("Client sending messages to peers on thread " + Thread.currentThread().getName());
+            Runnable clientWork = () -> {
                 try {
                     Thread.sleep(3000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                for (int peer : peers) {
+                    System.out.println("UDP Client sending messages to peer " + peer
+                            + " on thread " + Thread.currentThread().getName());
+                }
             };
 
             // new thread that accepts peers' measurements
-            Runnable serverThread = () -> {
+            Runnable serverWork = () -> {
                 for (int i = 5; i > 0; i--) {
-                    System.out.println("Server waiting for peers' messages on thread " + Thread.currentThread().getName());
+                    System.out.println("UDP Server waiting for peers' messages on thread "
+                            + Thread.currentThread().getName());
                     try {
                         Thread.sleep(3000);
+                        System.out.println("UDP Server received peers' messages on thread "
+                                + Thread.currentThread().getName());
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
             };
 
-            Thread s = new Thread(serverThread);
-            s.start();
-            Thread c = new Thread(client);
+            Thread c = new Thread(clientWork);
             c.start();
+
             try {
-                Thread.sleep(3000);
+                while (true){
+                    for(int i = 0; i < 5; i++){
+                        Thread s = new Thread(serverWork);
+                        s.start();
+                        Thread.sleep(1000);
+                    }
+                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -134,7 +157,7 @@ public class Node {
         }
     }
 
-    private String measure(){
+    private String getMeasure(){
         int lineNum;
         do {
             long estimatedTime = System.currentTimeMillis() - startTime;

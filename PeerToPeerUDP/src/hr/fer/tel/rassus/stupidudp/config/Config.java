@@ -1,5 +1,7 @@
 package hr.fer.tel.rassus.stupidudp.config;
 
+import hr.fer.tel.rassus.stupidudp.network.SimpleSimulatedDatagramSocket;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 
@@ -53,7 +55,7 @@ public class Config {
 
     public static boolean isLocalPortFree(int port) {
         try {
-            new ServerSocket(port).close();
+            new SimpleSimulatedDatagramSocket(port, 0.2, 1000).close();
             return true;
         } catch (IOException e) {
             return false;

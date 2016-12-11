@@ -8,6 +8,9 @@ public class Demo {
         try {
             Node p = new Node();
             System.out.println(p.getPort());
+            p.Do();
+            Thread.sleep(5000);
+            System.out.println(p.getPort());
         } catch (Exception e) {
             e.printStackTrace();
         }
