@@ -3,13 +3,11 @@ package hr.fer.tel.rassus.stupidudp.node;
 /**
  * Created by aelek on 11/12/2016.
  */
-public class Demo {
+public class S {
     public static void main(String[] args) {
         try {
             Node p = new Node();
             p.startServer();
-            Thread.sleep(5000);
-            p.startClient();
         } catch (Exception e) {
             e.printStackTrace();
         }
