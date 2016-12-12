@@ -4,9 +4,12 @@ import hr.fer.tel.rassus.stupidudp.config.Config;
 import hr.fer.tel.rassus.stupidudp.network.EmulatedSystemClock;
 import hr.fer.tel.rassus.stupidudp.network.SimpleSimulatedDatagramSocket;
 
-import java.io.*;
-import java.net.*;
-import java.util.Dictionary;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -17,6 +20,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by aelek on 07/12/2016.
  */
 public class Node {
+    private final int INTERVAL = 2;
+
+    private final int LOSS_RATE = 0;
+
+    private final boolean PRINT_SERVER = false;
+
+    private final boolean PRINT_CLIENT = true;
+
     private LinkedList<String> measurements;
 
     private HashSet<Integer> peers;
@@ -108,9 +119,9 @@ public class Node {
         return lines;
     }
 
-    public static boolean isLocalPortFree(int port) {
+    public boolean isLocalPortFree(int port) {
         try {
-            new SimpleSimulatedDatagramSocket(port, 0.2, 1000).close();
+            new SimpleSimulatedDatagramSocket(port, LOSS_RATE, 1000).close();
             return true;
         } catch (IOException e) {
             return false;
@@ -119,8 +130,16 @@ public class Node {
 
     public void startClient(){
         // new thread that sends measurements
-        Thread c = new Thread(new Client());
-        c.start();
+
+        for(int i = 0; i< INTERVAL; i++){
+            Thread c = new Thread(new Client());
+            c.start();
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void startServer() throws Exception {
@@ -138,8 +157,8 @@ public class Node {
             //String msg;
 
             try(SimpleSimulatedDatagramSocket socket = new SimpleSimulatedDatagramSocket(port, 0.2, 1000)) {
-                System.out.println("UDP server at port " + port);
-                System.out.println("UDP Server waiting for peers' messages on thread " + Thread.currentThread().getName());
+                //System.out.println("UDP server at port " + port);
+                if (PRINT_SERVER) System.out.println("UDP Server waiting for peers' messages at port " + port);
 
                 while (true)
                 {
@@ -151,7 +170,7 @@ public class Node {
                     socket.receive(receivePacket);
                     final String msg = new String(receivePacket.getData(), receivePacket.getOffset(), receivePacket.getLength());
 
-                    //System.out.println("UDP Server received " + msg);
+
                     String msgBody = getBody_FromMsg(msg);
                     int servFrom = getServerFrom_FromMsg(msg);
                     int clientFrom = getClientFrom_FromMsg(msg);
@@ -159,7 +178,7 @@ public class Node {
                     long nowScalarTimeStamp = clock.currentTimeMillis();
 
                     if (msgBody.equals("ACK")){
-                        System.out.println("UDP Server received ACK from " + servFrom);
+                        if (PRINT_SERVER) System.out.println("UDP Server received ACK from " + servFrom);
 
                         // sto je u ack-u servFrom je u obicnoj poruci servTo, to je port ovog servera
                         // pronadji poruku u shared_dict_ACK i postavi value na true
@@ -167,13 +186,13 @@ public class Node {
                         sharedDictAck.forEach((k, v) -> {
                             if(getServerFrom_FromMsg(k) == getServerTo_FromMsg(msg) && getClientFrom_FromMsg(k) == getClientTo_FromMsg(msg) && !v) {
                                 sharedDictAck.put(k,true);
-                                System.out.println("UDP Server updated ACK for message from " + getServerFrom_FromMsg(k));
+                                //if (PRINT_SERVER) System.out.println("UDP Server updated ACK for message from " + getServerFrom_FromMsg(k));
                             }
                         });
                     }
                     else {
                         // body-ftom-ts
-                        System.out.println("UDP Server received message " + msg + " from " + servFrom);
+                        if (PRINT_SERVER) System.out.println("UDP Server received message " + print_Msg(msg) + " from " + servFrom);
 
                         // spremi je u shared_dict_MSG to-do zasto je to uopce dict...
                         sharedDictMsg.put(msg,msgBody);
@@ -183,7 +202,7 @@ public class Node {
                         try{
                             // sto je od poruke servFrom i clientFrom sad postaje servToClientTo
                             String message = generateMsg("ACK", port, 0,servFrom,clientFrom,nowScalarTimeStamp);
-                            System.out.println("UDP Server sent ACK to " + servFrom);
+                            if (PRINT_SERVER) System.out.println("UDP Server sent ACK to " + servFrom);
                             sendBuffer = message.getBytes();
                             InetAddress address = InetAddress.getLocalHost();
                             DatagramPacket packet = new DatagramPacket(sendBuffer, sendBuffer.length, address, servFrom);
@@ -198,6 +217,11 @@ public class Node {
                 e.printStackTrace();
             }
         }
+    }
+
+    private String print_Msg(String msg) {
+        String[] arr = msg.split("-");
+        return arr[0];
     }
 
     private String getBody_FromMsg(String msg) { // to-do
@@ -244,7 +268,7 @@ public class Node {
             SimpleSimulatedDatagramSocket socket = null;
             try{
                 // Open socket
-                socket = new SimpleSimulatedDatagramSocket(0.2, 1000);
+                socket = new SimpleSimulatedDatagramSocket(LOSS_RATE, 1000);
                 int clientPort = socket.getLocalPort();
 
                 // Generate message
@@ -263,11 +287,11 @@ public class Node {
                     DatagramPacket packet = new DatagramPacket(sendBuffer, sendBuffer.length, address, peer);
                     socket.send(packet);
 
-                    System.out.println("UDP Client at " + socket.getLocalPort() + " sent message " + message + " to peer " + peer);
+                    if (PRINT_CLIENT) System.out.println("UDP Client at " + socket.getLocalPort() + " sent message " + print_Msg(message) + " to peer " + peer);
                 }
 
                 // Wait for acks
-                Thread.sleep(4000);
+                Thread.sleep(1000);
 
                 while (true){
                     // dok ima elemenata u shared_dict_ACK sa poruka_id i value false
@@ -280,18 +304,19 @@ public class Node {
 
                     if (tmp.isEmpty()) break;
 
-                    // ponovo salji
+                     // ponovo salji
                     for(String msg : tmp.keySet()) {
                         InetAddress address = InetAddress.getLocalHost();
                         sendBuffer = msg.getBytes();
                         DatagramPacket packet = new DatagramPacket(sendBuffer, sendBuffer.length, address, getServerTo_FromMsg(msg));
+                        if (PRINT_CLIENT)  System.out.println("UDP Client at " + socket.getLocalPort() +  " resending message " + print_Msg(msg) + " to peer " + getServerTo_FromMsg(msg));
                         socket.send(packet);
                     }
 
                     // Wait for acks
                     Thread.sleep(4000);
                 }
-                System.out.println("UDP Client at " + socket.getLocalPort() + " received all ACKS.");
+                if (PRINT_CLIENT)  System.out.println("UDP Client at " + socket.getLocalPort() + " received all ACKS.");
             } catch (InterruptedException | IOException e) {
                 e.printStackTrace();
             } finally {
