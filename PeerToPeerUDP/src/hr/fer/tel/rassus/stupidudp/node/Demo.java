@@ -8,8 +8,14 @@ public class Demo {
         try {
             Node p = new Node();
             p.startServer();
-            Thread.sleep(5000);
+            Thread.sleep(1000);
             p.startClient();
+            Thread.sleep(4000);
+
+            for(int i = 0; i < 4; i++){
+                p.print();
+               Thread.sleep(5000);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

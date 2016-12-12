@@ -13,7 +13,9 @@ import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 
 /**
@@ -26,7 +28,7 @@ public class Node {
 
     private final boolean PRINT_SERVER = false;
 
-    private final boolean PRINT_CLIENT = true;
+    private final boolean PRINT_CLIENT = false;
 
     private LinkedList<String> measurements;
 
@@ -37,6 +39,8 @@ public class Node {
     private ConcurrentHashMap<String,String> sharedDictMsg;
 
     private ConcurrentHashMap<String,Boolean> sharedDictAck;
+
+    private ConcurrentHashMap<String,Integer> vectorTimeStamp;
 
     private long startTime;
 
@@ -61,9 +65,14 @@ public class Node {
             throw new UnsupportedOperationException("Unable to read measurements file.");
         }
 
+        vectorTimeStamp = new ConcurrentHashMap<>(configuration.size());
+        for (String node :
+                configuration) {
+            vectorTimeStamp.put(node, 0);
+        }
+
         sharedDictMsg = new ConcurrentHashMap<>();
         sharedDictAck = new ConcurrentHashMap<>();
-
     }
 
     private int loadConfig() throws Exception {
@@ -131,13 +140,16 @@ public class Node {
     public void startClient(){
         // new thread that sends measurements
 
-        for(int i = 0; i< INTERVAL; i++){
-            Thread c = new Thread(new Client());
-            c.start();
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        for (int j = 0; j < 2; j++){
+        //while(true){ // to-do otkomentiraj
+            for(int i = 0; i < INTERVAL; i++){
+                Thread c = new Thread(new Client());
+                c.start();
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -146,6 +158,14 @@ public class Node {
         // new thread that accepts peers' measurements
         Thread s = new Thread(new Server());
         s.start();
+    }
+
+    public void print(){
+        for (String msg :
+                sharedDictMsg.keySet()) {
+            System.out.print("SCAL " + getScalarTimeStampFromMsg(msg) + " VECT " + getVectorTimeStampFromMsg(msg) +  " MSG " + getBody_FromMsg(msg) + "   ");
+        }
+        System.out.println();
     }
 
     public class Server implements Runnable{
@@ -201,11 +221,12 @@ public class Node {
                         int peerClientPort = receivePacket.getPort();
                         try{
                             // sto je od poruke servFrom i clientFrom sad postaje servToClientTo
-                            String message = generateMsg("ACK", port, 0,servFrom,clientFrom,nowScalarTimeStamp);
+                            String message = generateMsg("ACK", port, 0,servFrom,clientFrom,nowScalarTimeStamp, vectorTimeStamp);
                             if (PRINT_SERVER) System.out.println("UDP Server sent ACK to " + servFrom);
                             sendBuffer = message.getBytes();
                             InetAddress address = InetAddress.getLocalHost();
                             DatagramPacket packet = new DatagramPacket(sendBuffer, sendBuffer.length, address, servFrom);
+
                             socket.send(packet);
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -254,8 +275,26 @@ public class Node {
         return Long.parseLong(arr[5]);
     }
 
-    private String generateMsg(String msgBody, int serverFrom, int clientFrom, int serverTo, int clientTo, long scalarTimeStamp) { // to-do
-        return msgBody + "-" + serverFrom + "-" + clientFrom + "-" + serverTo + "-" + clientTo + "-" + scalarTimeStamp;
+    private String getVectorTimeStampFromMsg(String msg) {
+        String[] arr = msg.split("-");
+        return arr[6];
+    }
+
+
+    private String generateMsg(String msgBody, int serverFrom, int clientFrom, int serverTo, int clientTo, long scalarTimeStamp, ConcurrentHashMap<String, Integer> vectorTimeStamp) { // to-do
+        String vector = "[";
+        if (vectorTimeStamp.size() > 0){
+            for (String k :
+                    vectorTimeStamp.keySet()) {
+                vector += k;
+                vector += "=";
+                vector += vectorTimeStamp.get(k);
+                vector += ",";
+            }
+        }
+        vector = vector.substring(0,vector.lastIndexOf(","));
+        vector += "]";
+        return msgBody + "-" + serverFrom + "-" + clientFrom + "-" + serverTo + "-" + clientTo + "-" + scalarTimeStamp + "-" + vector;
     }
 
 
@@ -276,9 +315,9 @@ public class Node {
                 long scalarTimeStamp = clock.currentTimeMillis();
 
                 for (int peer : Node.this.peers) {
-                    String message = generateMsg(msgBody, port, clientPort, peer, 0,  scalarTimeStamp);
+                    String message = generateMsg(msgBody, port, clientPort, peer, 0,  scalarTimeStamp, vectorTimeStamp);
                     sendBuffer = message.getBytes();
-                    String ackMsg = generateMsg("ACK",port,clientPort,peer,0,scalarTimeStamp);
+                    String ackMsg = generateMsg("ACK",port,clientPort,peer,0,scalarTimeStamp, vectorTimeStamp);
                     // Save it to ACK shared dictionary on this node
                     sharedDictAck.put(ackMsg, false);
 
@@ -299,7 +338,7 @@ public class Node {
                     SimpleSimulatedDatagramSocket finalSocket = socket;
                     sharedDictAck.forEach((k, v) -> {
                         if(getServerFrom_FromMsg(k) == port && getClientFrom_FromMsg(k) == clientPort && !v)
-                            tmp.put(generateMsg(msgBody, port, clientPort, getServerTo_FromMsg(k), getClientTo_FromMsg(k),scalarTimeStamp),v);
+                            tmp.put(generateMsg(msgBody, port, clientPort, getServerTo_FromMsg(k), getClientTo_FromMsg(k),scalarTimeStamp, vectorTimeStamp),v);
                     });
 
                     if (tmp.isEmpty()) break;
