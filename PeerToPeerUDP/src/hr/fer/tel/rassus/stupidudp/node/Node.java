@@ -18,13 +18,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * Created by aelek on 07/12/2016.
  */
 public class Node {
-    private final boolean VERBOSE_VECTOR = false;
-
     private final int LOSS_RATE = 0;
+
+    private final boolean PRINT_VERBOSE_VECTOR = false;
 
     private final boolean PRINT_SERVER = true;
 
     private final boolean PRINT_CLIENT = false;
+
+    private final int DURATION = 20;
 
     private LinkedList<String> measurements;
 
@@ -135,18 +137,14 @@ public class Node {
 
     public void startClient(){
         // new thread that sends measurements
-
-        //for (int j = 0; j < 4; j++){ // to-do zakomentiraj
-        while(true){ // to-do otkomentiraj
-            //for(int i = 0; i < SORT_INTERVAL; i++){
-                Thread c = new Thread(new Client());
-                c.start();
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            //}
+        for (int j = 0; j < DURATION; j++) {
+            Thread c = new Thread(new Client());
+            c.start();
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -164,12 +162,17 @@ public class Node {
         Map<String,Long> scalar = new Hashtable<>();
         Map<String,Long> vector = new Hashtable<>();
 
+        int sum = 0;
+
         for (String msg : sharedDictMsg.keySet()) {
             scalar.put(msg,getScalarTimeStampFromMsg(msg));
+            sum += Integer.parseInt(getBody_FromMsg(msg));
             //System.out.println(getVectorTimeStampFromMsgAsVector(msg).get(Integer.toString(port)));
             int vectKey = getVectorTimeStampFromMsgAsVector(msg).get(Integer.toString(port));
             vector.put(msg, (long) vectKey);
         }
+
+        double mean = sharedDictMsg.size() > 0 ? (double)sum / sharedDictMsg.size() : 0;
 
         sortedByScalar = sortByValue(scalar);
         sortedByVector = sortByValue(vector);
@@ -189,6 +192,10 @@ public class Node {
             System.out.print(" VECT " + getVectorTimeStampFromMsg(msg));
             System.out.print(" MSG " + getBody_FromMsg(msg) + "\n");
         }
+        System.out.println("------------------------------------------------------------");
+
+
+        System.out.println("Mean = " + mean);
 
         System.out.println("\n");
         sharedDictMsg.clear();
@@ -302,13 +309,13 @@ public class Node {
     private void updateVectorBeforeSend(){
 
         int curr = vectorTimeStamp.get(Integer.toString(port));
-        if (VERBOSE_VECTOR) System.out.println("Updating vector " + vectorTimeStamp.toString() + " before send.");
+        if (PRINT_VERBOSE_VECTOR) System.out.println("Updating vector " + vectorTimeStamp.toString() + " before send.");
         vectorTimeStamp.put(Integer.toString(port),curr+1);
-        if (VERBOSE_VECTOR) System.out.println("Updated vector " + vectorTimeStamp.toString());
+        if (PRINT_VERBOSE_VECTOR) System.out.println("Updated vector " + vectorTimeStamp.toString());
     }
 
     private void updateVectorAfterReceive(ConcurrentHashMap<String,Integer> receivedVector){
-        if (VERBOSE_VECTOR) System.out.println("Updating vector " + vectorTimeStamp.toString() +" after receive");
+        if (PRINT_VERBOSE_VECTOR) System.out.println("Updating vector " + vectorTimeStamp.toString() +" after receive");
         for (String key :
                 vectorTimeStamp.keySet()) {
             int value = vectorTimeStamp.get(key);
@@ -321,7 +328,7 @@ public class Node {
         }
         int curr = vectorTimeStamp.get(Integer.toString(port));
         vectorTimeStamp.put(Integer.toString(port),curr+1);
-        if (VERBOSE_VECTOR) System.out.println("Updated vector " + vectorTimeStamp.toString());
+        if (PRINT_VERBOSE_VECTOR) System.out.println("Updated vector " + vectorTimeStamp.toString());
     }
 
     private String print_Msg(String msg) {
