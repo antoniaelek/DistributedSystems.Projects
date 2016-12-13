@@ -7,14 +7,15 @@ public class Demo {
     public static void main(String[] args) {
         try {
             Node p = new Node();
+            System.out.println("Node on port " + p.getPort());
             p.startServer();
             Thread.sleep(1000);
             p.startClient();
-            Thread.sleep(4000);
 
-            for(int i = 0; i < 4; i++){
-                p.print();
-               Thread.sleep(5000);
+            while(true){
+            //for(int i = 0; i < 2; i++){
+                Thread.sleep(2000);
+                p.printSorted();
             }
         } catch (Exception e) {
             e.printStackTrace();

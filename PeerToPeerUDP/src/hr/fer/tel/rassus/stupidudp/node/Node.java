@@ -10,23 +10,19 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.LinkedList;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 
 
 /**
  * Created by aelek on 07/12/2016.
  */
 public class Node {
-    private final int INTERVAL = 2;
+    private final boolean VERBOSE_VECTOR = false;
 
     private final int LOSS_RATE = 0;
 
-    private final boolean PRINT_SERVER = false;
+    private final boolean PRINT_SERVER = true;
 
     private final boolean PRINT_CLIENT = false;
 
@@ -140,9 +136,9 @@ public class Node {
     public void startClient(){
         // new thread that sends measurements
 
-        for (int j = 0; j < 2; j++){
-        //while(true){ // to-do otkomentiraj
-            for(int i = 0; i < INTERVAL; i++){
+        //for (int j = 0; j < 4; j++){ // to-do zakomentiraj
+        while(true){ // to-do otkomentiraj
+            //for(int i = 0; i < SORT_INTERVAL; i++){
                 Thread c = new Thread(new Client());
                 c.start();
                 try {
@@ -150,7 +146,7 @@ public class Node {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-            }
+            //}
         }
     }
 
@@ -160,12 +156,55 @@ public class Node {
         s.start();
     }
 
-    public void print(){
-        for (String msg :
-                sharedDictMsg.keySet()) {
-            System.out.print("SCAL " + getScalarTimeStampFromMsg(msg) + " VECT " + getVectorTimeStampFromMsg(msg) +  " MSG " + getBody_FromMsg(msg) + "   ");
+    public void printSorted(){
+
+        Map<String,Long> sortedByVector;
+        Map<String,Long> sortedByScalar;
+
+        Map<String,Long> scalar = new Hashtable<>();
+        Map<String,Long> vector = new Hashtable<>();
+
+        for (String msg : sharedDictMsg.keySet()) {
+            scalar.put(msg,getScalarTimeStampFromMsg(msg));
+            //System.out.println(getVectorTimeStampFromMsgAsVector(msg).get(Integer.toString(port)));
+            int vectKey = getVectorTimeStampFromMsgAsVector(msg).get(Integer.toString(port));
+            vector.put(msg, (long) vectKey);
         }
-        System.out.println();
+
+        sortedByScalar = sortByValue(scalar);
+        sortedByVector = sortByValue(vector);
+
+        System.out.println("------------------------------------------------------------");
+        System.out.println("B Y   S C A L A R");
+        for (String msg : sortedByScalar.keySet()) {
+            System.out.print("SCAL " + getScalarTimeStampFromMsg(msg));
+            System.out.print(" VECT " + getVectorTimeStampFromMsg(msg));
+            System.out.print(" MSG " + getBody_FromMsg(msg) + "\n");
+        }
+        System.out.println("------------------------------------------------------------");
+
+        System.out.println("B Y   V E C T O R");
+        for (String msg : sortedByVector.keySet()) {
+            System.out.print("SCAL " + getScalarTimeStampFromMsg(msg));
+            System.out.print(" VECT " + getVectorTimeStampFromMsg(msg));
+            System.out.print(" MSG " + getBody_FromMsg(msg) + "\n");
+        }
+
+        System.out.println("\n");
+        sharedDictMsg.clear();
+    }
+
+    public Map<String, Long> sortByValue( Map<String, Long>  map )
+    {
+        List<Map.Entry<String, Long> > list = new LinkedList<>(map.entrySet());
+        Collections.sort( list, Comparator.comparing(o -> (o.getValue())));
+
+        Map<String, Long>  result = new LinkedHashMap<>();
+        for (Map.Entry<String, Long>  entry : list)
+        {
+            result.put( entry.getKey(), entry.getValue() );
+        }
+        return result;
     }
 
     public class Server implements Runnable{
@@ -197,6 +236,8 @@ public class Node {
                     long scalarTimeStamp = getScalarTimeStampFromMsg(msg);
                     long nowScalarTimeStamp = clock.currentTimeMillis();
 
+                    updateVectorAfterReceive(getVectorTimeStampFromMsgAsVector(msg));
+
                     if (msgBody.equals("ACK")){
                         if (PRINT_SERVER) System.out.println("UDP Server received ACK from " + servFrom);
 
@@ -214,13 +255,17 @@ public class Node {
                         // body-ftom-ts
                         if (PRINT_SERVER) System.out.println("UDP Server received message " + print_Msg(msg) + " from " + servFrom);
 
-                        // spremi je u shared_dict_MSG to-do zasto je to uopce dict...
+                        // spremi je u shared_dict_MSG
                         sharedDictMsg.put(msg,msgBody);
 
                         // salji ACK peer-u
                         int peerClientPort = receivePacket.getPort();
                         try{
                             // sto je od poruke servFrom i clientFrom sad postaje servToClientTo
+
+                            // update vector timestamp
+                            updateVectorBeforeSend();
+
                             String message = generateMsg("ACK", port, 0,servFrom,clientFrom,nowScalarTimeStamp, vectorTimeStamp);
                             if (PRINT_SERVER) System.out.println("UDP Server sent ACK to " + servFrom);
                             sendBuffer = message.getBytes();
@@ -240,37 +285,76 @@ public class Node {
         }
     }
 
+    private ConcurrentHashMap<String, Integer> getVectorTimeStampFromMsgAsVector(String msg) {
+        ConcurrentHashMap<String, Integer> ret = new ConcurrentHashMap<>();
+        String strRepr = getVectorTimeStampFromMsg(msg);
+        //System.out.println(strRepr);
+        // oblika [123:=0,124=0]
+        String[] elements = strRepr.substring(1,strRepr.length()-1).split(",");
+
+        for (String element: elements) {
+            String[] kvp = element.split("=");
+            ret.put(kvp[0],Integer.parseInt(kvp[1]));
+        }
+        return ret;
+    }
+
+    private void updateVectorBeforeSend(){
+
+        int curr = vectorTimeStamp.get(Integer.toString(port));
+        if (VERBOSE_VECTOR) System.out.println("Updating vector " + vectorTimeStamp.toString() + " before send.");
+        vectorTimeStamp.put(Integer.toString(port),curr+1);
+        if (VERBOSE_VECTOR) System.out.println("Updated vector " + vectorTimeStamp.toString());
+    }
+
+    private void updateVectorAfterReceive(ConcurrentHashMap<String,Integer> receivedVector){
+        if (VERBOSE_VECTOR) System.out.println("Updating vector " + vectorTimeStamp.toString() +" after receive");
+        for (String key :
+                vectorTimeStamp.keySet()) {
+            int value = vectorTimeStamp.get(key);
+            int receivedValue = receivedVector.get(key);
+            if (key.equals(Integer.toString(port))){
+                vectorTimeStamp.put(key,value+1);
+                continue;
+            }
+            if (value < receivedValue) vectorTimeStamp.put(key,receivedValue);
+        }
+        int curr = vectorTimeStamp.get(Integer.toString(port));
+        vectorTimeStamp.put(Integer.toString(port),curr+1);
+        if (VERBOSE_VECTOR) System.out.println("Updated vector " + vectorTimeStamp.toString());
+    }
+
     private String print_Msg(String msg) {
         String[] arr = msg.split("-");
         return arr[0];
     }
 
-    private String getBody_FromMsg(String msg) { // to-do
+    private String getBody_FromMsg(String msg) {
         String[] arr = msg.split("-");
         return arr[0];
     }
 
-    private int getServerFrom_FromMsg(String msg) { // to-do
+    private int getServerFrom_FromMsg(String msg) {
         String[] arr = msg.split("-");
         return Integer.parseInt(arr[1]);
     }
 
-    private int getClientFrom_FromMsg(String msg) { // to-do
+    private int getClientFrom_FromMsg(String msg) {
         String[] arr = msg.split("-");
         return Integer.parseInt(arr[2]);
     }
 
-    private int getServerTo_FromMsg(String msg) { // to-do
+    private int getServerTo_FromMsg(String msg) {
         String[] arr = msg.split("-");
         return Integer.parseInt(arr[3]);
     }
 
-    private int getClientTo_FromMsg(String msg) { // to-do
+    private int getClientTo_FromMsg(String msg) {
         String[] arr = msg.split("-");
         return Integer.parseInt(arr[4]);
     }
 
-    private long getScalarTimeStampFromMsg(String msg) { // to-do
+    private long getScalarTimeStampFromMsg(String msg) {
         String[] arr = msg.split("-");
         return Long.parseLong(arr[5]);
     }
@@ -281,7 +365,7 @@ public class Node {
     }
 
 
-    private String generateMsg(String msgBody, int serverFrom, int clientFrom, int serverTo, int clientTo, long scalarTimeStamp, ConcurrentHashMap<String, Integer> vectorTimeStamp) { // to-do
+    private String generateMsg(String msgBody, int serverFrom, int clientFrom, int serverTo, int clientTo, long scalarTimeStamp, ConcurrentHashMap<String, Integer> vectorTimeStamp) {
         String vector = "[";
         if (vectorTimeStamp.size() > 0){
             for (String k :
@@ -314,14 +398,21 @@ public class Node {
                 String msgBody = Node.this.getMeasure();
                 long scalarTimeStamp = clock.currentTimeMillis();
 
+                // put it in shared dict because we need to print it with all others messages after 5 secs
+                sharedDictMsg.put(generateMsg(msgBody, port, clientPort, 0, 0,  scalarTimeStamp, vectorTimeStamp),msgBody);
+
                 for (int peer : Node.this.peers) {
+                    // update vector timestamp
+                    updateVectorBeforeSend();
+
+                    // Send to peer
                     String message = generateMsg(msgBody, port, clientPort, peer, 0,  scalarTimeStamp, vectorTimeStamp);
                     sendBuffer = message.getBytes();
                     String ackMsg = generateMsg("ACK",port,clientPort,peer,0,scalarTimeStamp, vectorTimeStamp);
                     // Save it to ACK shared dictionary on this node
                     sharedDictAck.put(ackMsg, false);
 
-                    // Send to peer
+
                     InetAddress address = InetAddress.getLocalHost();
                     DatagramPacket packet = new DatagramPacket(sendBuffer, sendBuffer.length, address, peer);
                     socket.send(packet);
