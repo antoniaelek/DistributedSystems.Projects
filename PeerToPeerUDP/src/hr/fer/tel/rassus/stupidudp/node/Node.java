@@ -140,11 +140,11 @@ public class Node {
         for (int j = 0; j < DURATION; j++) {
             Thread c = new Thread(new Client());
             c.start();
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
         }
     }
 

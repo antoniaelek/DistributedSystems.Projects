@@ -16,7 +16,6 @@ public class Demo {
                 Thread.sleep(INTERVAL);
                 p.printSorted();
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
