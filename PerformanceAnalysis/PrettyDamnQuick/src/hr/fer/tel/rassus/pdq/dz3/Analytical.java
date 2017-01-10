@@ -13,8 +13,10 @@ import java.util.ArrayList;
  */
 public class Analytical {
     public static void main(String[] args) {
-        final double lambda = 1;
-                
+        final double lambda = 0.1;
+        final double step = 0.5;
+        final int numIterations = 11;
+        
         final double a = 0.2;
         final double b = 0.3;
         final double c = 0.5;
@@ -60,12 +62,13 @@ public class Analytical {
         vs.add(v6);
         vs.add(v7);
         
-        double T = 0;
-        for(int i=0; i<m; i++){
-            double D = vs.get(i)*demands.get(i);
-            T += D/(1-D);
+        for(double l = lambda, upperBound = lambda + numIterations * step; l < upperBound; l += step){
+            double T = 0;
+            for(int i=0; i<m; i++){
+                double D = vs.get(i)*demands.get(i);
+                T += D/(1-l*D);
+            }
+            System.out.printf("T(%.06f) = %.06f\n",l,T);
         }
-        
-        System.out.printf("Srednje vrijeme zadržavanja u sustavu T = %.06f\n", T);
     }
 }

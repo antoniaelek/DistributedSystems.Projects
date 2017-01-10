@@ -18,8 +18,10 @@ import java.util.ArrayList;
  */
 public class Demo {
     public static void main(String[] args) {
-        final double lambda = 1;
-                
+        final double lambda = 0.1;
+        final double step = 0.5;
+        final int numIterations = 11;
+        
         final double a = 0.2;
         final double b = 0.3;
         final double c = 0.5;
@@ -44,6 +46,7 @@ public class Demo {
         final double v5 = ((1-h*g)/(1-f+d-h*e))*c;
         final double v6 = (d-h*e)/(1-f+d-h*e);
         final double v7 = (e+g*d)/(1-f+d-h*e);
+        
         final int m = 7;   
         
         // demands
@@ -66,24 +69,26 @@ public class Demo {
         visits.add(v6);
         visits.add(v7);
  
-        // Postavljanje pocetnih postavki PDQ sustava
-        PDQ pdq = new PDQ();
-        pdq.Init("Sustav");
-        pdq.CreateOpen("Zahtjevi", lambda);
-        
-        for(int i=0; i<m ;i++){
-            String sName = "S" + (i + 1);
-            
-            pdq.CreateNode(sName, Node.CEN, QDiscipline.FCFS);
-            pdq.SetVisits(sName, "Zahtjevi", visits.get(i), demands.get(i));
+        for(double l = lambda, upperBound = lambda + numIterations * step; l < upperBound; l += step){
+            // Postavljanje pocetnih postavki PDQ sustava
+            PDQ pdq = new PDQ();
+            pdq.Init("Sustav");
+            pdq.CreateOpen("Zahtjevi", l);
+
+            for(int i=0; i<m ;i++){
+                String sName = "S" + (i + 1);
+
+                pdq.CreateNode(sName, Node.CEN, QDiscipline.FCFS);
+                pdq.SetVisits(sName, "Zahtjevi", visits.get(i), demands.get(i));
+            }
+
+            // Pokretanje izracuna
+            pdq.Solve(Methods.CANON);
+
+            // Prikaz rezultata  
+            // pdq.Report();
+            double T = pdq.GetResponse(Job.TRANS, "Zahtjevi");
+            System.out.printf("T(%.06f) = %.06f\n",l,T);
         }
-
-        // Pokretanje izracuna
-        pdq.Solve(Methods.CANON);
-
-        // Prikaz rezultata  
-        // pdq.Report();
-        double T = pdq.GetResponse(Job.TRANS, "Zahtjevi");
-        System.out.printf("Srednje vrijeme zadržavanja u sustavu T = %.06f\n", T);
     }
 }
