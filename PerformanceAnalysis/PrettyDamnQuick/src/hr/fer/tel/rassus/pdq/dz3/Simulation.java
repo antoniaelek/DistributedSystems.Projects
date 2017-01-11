@@ -16,11 +16,11 @@ import java.util.ArrayList;
  *
  * @author aelek
  */
-public class Demo {
+public class Simulation {
     public static void main(String[] args) {
-        final double lambda = 0.1;
-        final double step = 0.5;
-        final int numIterations = 11;
+        final double lambda = 0.01;
+        final double step = 0.25;
+        final int numIterations = 27;
         
         final double a = 0.2;
         final double b = 0.3;
@@ -40,12 +40,12 @@ public class Demo {
         final double S7 = 0.15;
         
         final double v1 = 1;
-        final double v2 = (1-h*g)/(1-f+d-h*e);
-        final double v3 = ((1-h*g)/(1-f+d-h*e))*a;
-        final double v4 = ((1-h*g)/(1-f+d-h*e))*b;
-        final double v5 = ((1-h*g)/(1-f+d-h*e))*c;
-        final double v6 = (d-h*e)/(1-f+d-h*e);
-        final double v7 = (e+g*d)/(1-f+d-h*e);
+        final double v2 = (1-g*h)/(1-g*h-(d+e*h)*f);
+        final double v3 = a * v2;
+        final double v4 = b * v2;        
+        final double v5 = c * v2;
+        final double v6 = ((d+e*h)/(1-g*h))*v2;
+        final double v7 = (e+g*(d+e*h)/(1-g*h))*v2;
         
         final int m = 7;   
         
